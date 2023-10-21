@@ -127,6 +127,31 @@ spec:
                 group: 1
           policy:
             fromFieldPath: Optional
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.vpcConfig[0].clusterSecurityGroupId
+          toFieldPath: status.eks.clusterSecurityGroupId
+          policy:
+            fromFieldPath: Optional
+    - name: clusterSecurityGroupTag
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: Tag
+        spec:
+          forProvider:
+            key: "eks.aws.platform.upbound.io/discovery"
+      patches:
+        - type: PatchSet
+          patchSetName: providerConfigRef
+        - type: PatchSet
+          patchSetName: deletionPolicy
+        - type: PatchSet
+          patchSetName: region
+        - fromFieldPath: spec.parameters.id
+          toFieldPath: spec.forProvider.value
+        - fromFieldPath: status.eks.clusterSecurityGroupId
+          toFieldPath: spec.forProvider.resourceId
+          policy:
+            fromFieldPath: Required
     - name: kubernetesClusterAuth
       base:
         apiVersion: eks.aws.upbound.io/v1beta1
