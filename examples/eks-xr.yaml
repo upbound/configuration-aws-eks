@@ -1,0 +1,19 @@
+apiVersion: aws.platform.upbound.io/v1alpha1
+kind: XEKS
+metadata:
+  name: configuration-aws-eks
+spec:
+  parameters:
+    id: configuration-aws-eks
+    region: us-west-2
+    version: "1.27"
+    iam:
+      # replace with your custom arn like:
+      # roleArn: arn:aws:iam::123456789:role/AWSReservedSSO_AdministratorAccess_d703c73ed340fde7
+      roleArn: ${data.aws_eks_iam_default_admin}
+    nodes:
+      count: 3
+      instanceType: t3.small
+  writeConnectionSecretToRef:
+    name: configuration-aws-eks-kubeconfig
+    namespace: upbound-system
