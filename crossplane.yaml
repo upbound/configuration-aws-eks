@@ -17,8 +17,8 @@ spec:
     - provider: xpkg.upbound.io/crossplane-contrib/provider-kubernetes
       version: ">=v0.9.0"
     - provider: xpkg.upbound.io/upbound/provider-aws-ec2
-      version: ">=v0.36.0"
+      version: "v0.43.0"
     - provider: xpkg.upbound.io/upbound/provider-aws-eks
-      version: ">=v0.36.0"
+      version: "v0.43.0"
     - provider: xpkg.upbound.io/upbound/provider-aws-iam
-      version: ">=v0.36.0"
+      version: "v0.43.0"
