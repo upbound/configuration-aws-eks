@@ -132,6 +132,11 @@ spec:
           toFieldPath: status.eks.clusterSecurityGroupId
           policy:
             fromFieldPath: Optional
+        - type: ToCompositeFieldPath
+          fromFieldPath: metadata.annotations[crossplane.io/external-name]
+          toFieldPath: status.eks.clusterName
+          policy:
+            fromFieldPath: Optional
     - name: clusterSecurityGroupTag
       base:
         apiVersion: ec2.aws.upbound.io/v1beta1
