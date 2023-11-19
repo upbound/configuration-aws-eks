@@ -460,10 +460,16 @@ spec:
           combine:
             variables:
               - fromFieldPath: status.eks.nodeGroupRoleArn
+              - fromFieldPath: spec.parameters.iam.autoscalerArn
               - fromFieldPath: spec.parameters.iam.roleArn
             strategy: string
             string:
               fmt: |
+                - groups:
+                  - system:bootstrappers
+                  - system:nodes
+                  rolearn: %s
+                  username: system:node:{{EC2PrivateDNSName}}
                 - groups:
                   - system:bootstrappers
                   - system:nodes

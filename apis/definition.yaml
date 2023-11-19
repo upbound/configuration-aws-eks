@@ -42,6 +42,10 @@ spec:
                         description: The IAM User ARN to connect as ClusterAdmin.
                         type: string
                         default: userArn
+                      autoscalerArn:
+                        description: The AutoScaler Role ARN to connect as ClusterAdmin.
+                        type: string
+                        default: autoscalerArn
                   deletionPolicy:
                     description: Delete the external resources when the Claim/XR is deleted. Defaults to Delete
                     enum:
