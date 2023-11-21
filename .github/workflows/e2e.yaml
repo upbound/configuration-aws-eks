@@ -6,6 +6,7 @@ on:
 
 jobs:
   e2e:
+    permissions: write-all
     uses: upbound/uptest/.github/workflows/pr-comment-trigger.yml@main
     with:
       package-type: configuration
