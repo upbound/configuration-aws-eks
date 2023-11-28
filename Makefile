@@ -11,6 +11,8 @@ PLATFORMS ?= linux_amd64
 # ====================================================================================
 # Setup Kubernetes tools
 
+# set UXP_VERSION because of https://github.com/crossplane/crossplane/issues/5055
+UXP_VERSION = 1.13.2-up.2
 UP_VERSION = v0.19.1
 UP_CHANNEL = stable
 UPTEST_VERSION = v0.6.1
