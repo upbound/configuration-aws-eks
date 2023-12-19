@@ -133,7 +133,7 @@ spec:
           policy:
             fromFieldPath: Optional
         - type: ToCompositeFieldPath
-          fromFieldPath: metadata.annotations[crossplane.io/external-name]
+          fromFieldPath: status.atProvider.id
           toFieldPath: status.eks.clusterName
           policy:
             fromFieldPath: Optional
@@ -320,9 +320,6 @@ spec:
       base:
         apiVersion: eks.aws.upbound.io/v1beta1
         kind: Addon
-        metadata:
-          annotations:
-            crossplane.io/external-name: aws-ebs-csi-driver
         spec:
           forProvider:
             addonName: aws-ebs-csi-driver
