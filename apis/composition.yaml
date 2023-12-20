@@ -132,11 +132,23 @@ spec:
           toFieldPath: status.eks.clusterSecurityGroupId
           policy:
             fromFieldPath: Optional
-        - type: ToCompositeFieldPath
-          fromFieldPath: status.atProvider.id
-          toFieldPath: status.eks.clusterName
+    # We need to take control over securityGroup transitively created by EKS
+    # See https://github.com/hashicorp/terraform-provider-aws/issues/11473
+    - name: clusterSecurityGroupImport
+      base:
+        apiVersion: ec2.aws.upbound.io/v1beta1
+        kind: SecurityGroup
+      patches:
+        - type: PatchSet
+          patchSetName: providerConfigRef
+        - type: PatchSet
+          patchSetName: deletionPolicy
+        - type: PatchSet
+          patchSetName: region
+        - fromFieldPath: status.eks.clusterSecurityGroupId
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
           policy:
-            fromFieldPath: Optional
+            fromFieldPath: Required
     - name: clusterSecurityGroupTag
       base:
         apiVersion: ec2.aws.upbound.io/v1beta1
@@ -316,6 +328,11 @@ spec:
           toFieldPath: spec.forProvider.instanceTypes[0]
         - fromFieldPath: spec.parameters.id
           toFieldPath: spec.forProvider.subnetIdSelector.matchLabels[networks.aws.platform.upbound.io/network-id]
+        - type: ToCompositeFieldPath
+          fromFieldPath: status.atProvider.clusterName
+          toFieldPath: status.eks.clusterName
+          policy:
+            fromFieldPath: Optional
     - name: ebsCsiAddon
       base:
         apiVersion: eks.aws.upbound.io/v1beta1
@@ -338,6 +355,34 @@ spec:
             - type: string
               string:
                 fmt: "%s:aws-ebs-csi-driver"
+          policy:
+            fromFieldPath: Required
+    - name: cniAddon
+      base:
+        apiVersion: eks.aws.upbound.io/v1beta1
+        kind: Addon
+        spec:
+          forProvider:
+            addonName: vpc-cni
+            # Important for clean deletion, see https://github.com/terraform-aws-modules/terraform-aws-eks/pull/2743#issuecomment-1717657847
+            # We are using `preserve: false` instead of 'true' to take over the
+            # control of full addon deletion to crossplane reconcilers
+            preserve: false
+            clusterNameSelector:
+              matchControllerRef: true
+      patches:
+        - type: PatchSet
+          patchSetName: providerConfigRef
+        - type: PatchSet
+          patchSetName: deletionPolicy
+        - type: PatchSet
+          patchSetName: region
+        - fromFieldPath: status.eks.clusterName
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+            - type: string
+              string:
+                fmt: "%s:vpc-cni"
           policy:
             fromFieldPath: Required
     - name: oidcProvider
