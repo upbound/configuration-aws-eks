@@ -11,11 +11,9 @@ PLATFORMS ?= linux_amd64
 # ====================================================================================
 # Setup Kubernetes tools
 
-# set UXP_VERSION because of https://github.com/crossplane/crossplane/issues/5055
-UXP_VERSION = 1.13.2-up.2
-UP_VERSION = v0.19.1
+UP_VERSION = v0.21.0
 UP_CHANNEL = stable
-UPTEST_VERSION = v0.6.1
+UPTEST_VERSION = v0.9.0
 
 -include build/makelib/k8s_tools.mk
 # ====================================================================================
@@ -67,7 +65,7 @@ build.init: $(UP)
 # - UPTEST_DATASOURCE_PATH (optional), see https://github.com/upbound/uptest#injecting-dynamic-values-and-datasource
 uptest: $(UPTEST) $(KUBECTL) $(KUTTL)
 	@$(INFO) running automated tests
-	@KUBECTL=$(KUBECTL) KUTTL=$(KUTTL) $(UPTEST) e2e examples/network-xr.yaml,examples/eks-xr.yaml --data-source="${UPTEST_DATASOURCE_PATH}" --setup-script=test/setup.sh --default-timeout=2400 || $(FAIL)
+	@KUBECTL=$(KUBECTL) KUTTL=$(KUTTL) CROSSPLANE_NAMESPACE=$(CROSSPLANE_NAMESPACE) $(UPTEST) e2e examples/network-xr.yaml,examples/eks-xr.yaml --data-source="${UPTEST_DATASOURCE_PATH}" --setup-script=test/setup.sh --default-timeout=2400 || $(FAIL)
 	@$(OK) running automated tests
 
 # This target requires the following environment variables to be set:
