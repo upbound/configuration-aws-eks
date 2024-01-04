@@ -94,11 +94,11 @@ spec:
                     matchLabels:
                       role: controlplane
                   vpcConfig:
-                  - endpointPrivateAccess: true
-                    endpointPublicAccess: true
-                    subnetIdSelector:
-                      matchLabels:
-                        access: public
+                    - endpointPrivateAccess: true
+                      endpointPublicAccess: true
+                      subnetIdSelector:
+                        matchLabels:
+                          access: public
             patches:
               - patchSetName: providerConfigRef
                 type: PatchSet
@@ -491,10 +491,10 @@ spec:
               - fromFieldPath: metadata.uid
                 toFieldPath: spec.credentials.secretRef.name
                 transforms:
-                - string:
-                    fmt: '%s-ekscluster'
-                    type: Format
-                  type: string
+                  - string:
+                      fmt: '%s-ekscluster'
+                      type: Format
+                    type: string
                 type: FromCompositeFieldPath
             readinessChecks:
               - type: None
