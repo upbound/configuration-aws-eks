@@ -161,29 +161,8 @@ spec:
                   fromFieldPath: Required
                 toFieldPath: metadata.annotations[crossplane.io/external-name]
                 type: FromCompositeFieldPath
-
-          - name: clusterSecurityGroupTag
-            base:
-              apiVersion: ec2.aws.upbound.io/v1beta1
-              kind: Tag
-              spec:
-                forProvider:
-                  key: eks.aws.platform.upbound.io/discovery
-            patches:
-              - patchSetName: providerConfigRef
-                type: PatchSet
-              - patchSetName: deletionPolicy
-                type: PatchSet
-              - patchSetName: region
-                type: PatchSet
               - fromFieldPath: spec.parameters.id
-                toFieldPath: spec.forProvider.value
-                type: FromCompositeFieldPath
-              - fromFieldPath: status.eks.clusterSecurityGroupId
-                policy:
-                  fromFieldPath: Required
-                toFieldPath: spec.forProvider.resourceId
-                type: FromCompositeFieldPath
+                toFieldPath: spec.forProvider.tags[eks.aws.platform.upbound.io/discovery]
 
           - name: kubernetesClusterAuth
             base:
