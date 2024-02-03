@@ -19,11 +19,12 @@ In this configuration, the EKS API contains:
 To deploy this configuration into a new Crossplane installation, use the `--set configuration.packages` flag in your `helm install` command.
 
 ```shell
-helm install crossplane \
-crossplane-stable/crossplane \
---namespace crossplane-system \
---create-namespace \
---set configuration.packages='{xpkg.upbound.io/upbound/configuration-aws-eks:v0.1.0}'
+apiVersion: pkg.crossplane.io/v1
+kind: Configuration
+metadata:
+  name: configuration-aws-eks
+spec:
+  package: xpkg.upbound.io/upbound/configuration-aws-eks:v0.7.0
 ```
 
 ## Next steps
