@@ -11,7 +11,7 @@ The core components of a custom API in [Crossplane](https://docs.crossplane.io/v
 
 In this configuration, the EKS API contains:
 
-- **an EKS(/apis/definition.yaml) custom resource type.**
+- **an [EKS](/apis/definition.yaml) custom resource type.**
 - **Composition of the EKS resources:** Configured in [/apis/composition.yaml](/apis/composition.yaml), it provisions an EKS cluster and fundamental security and networking resources in the `upbound-system` namespace.
 
 This repository contains an Composite Resource (XR) file.
