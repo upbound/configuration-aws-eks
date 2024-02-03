@@ -14,7 +14,17 @@ In this configuration, the EKS API contains:
 - **an [EKS](/apis/definition.yaml) custom resource type.**
 - **Composition of the EKS resources:** Configured in [/apis/composition.yaml](/apis/composition.yaml), it provisions an EKS cluster and fundamental security and networking resources in the `upbound-system` namespace.
 
-This repository contains an Composite Resource (XR) file.
+## Deployment
+
+To deploy this configuration into a new Crossplane installation, use the `--set configuration.packages` flag in your `helm install` command.
+
+```shell
+helm install crossplane \
+crossplane-stable/crossplane \
+--namespace crossplane-system \
+--create-namespace \
+--set configuration.packages='{xpkg.upbound.io/upbound/configuration-aws-eks:v0.1.0}'
+```
 
 ## Next steps
 
