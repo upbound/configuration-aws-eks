@@ -1,10 +1,10 @@
 # AWS EKS Configuration
 
-This repository contains a [Crossplane configuration](https://docs.crossplane.io/v1.11/concepts/packages/#configuration-packages), tailored for users establishing their initial control plane with [Upbound](https://cloud.upbound.io). This configuration deploys fully managed [Amazon Elastic Kubernetes Service (EKS)](https://aws.amazon.com/eks/) instances, leveraging the robust capabilities of the [Upbound Official AWS Provider](https://marketplace.upbound.io/providers/upbound/provider-family-aws).
+This repository contains a [Crossplane configuration](https://docs.crossplane.io/latest/concepts/packages/#configuration-packages), tailored for users establishing their initial control plane with [Upbound](https://cloud.upbound.io). This configuration deploys fully managed [Amazon Elastic Kubernetes Service (EKS)](https://aws.amazon.com/eks/) instances, leveraging the robust capabilities of the [Upbound Official AWS Provider](https://marketplace.upbound.io/providers/upbound/provider-family-aws).
 
 ## Overview
 
-The core components of a custom API in [Crossplane](https://docs.crossplane.io/v1.11/getting-started/introduction/) include:
+The core components of a custom API in [Crossplane](https://docs.crossplane.io/latest/getting-started/introduction/) include:
 
 - **CompositeResourceDefinition (XRD):** Defines the API's structure.
 - **Composition(s):** Implements the API by orchestrating a set of Crossplane managed resources.
