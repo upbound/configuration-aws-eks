@@ -23,7 +23,7 @@ spec:
       version: "v0.17.0"
     - provider: xpkg.upbound.io/crossplane-contrib/provider-kubernetes
       # renovate: datasource=github-releases depName=crossplane-contrib/provider-kubernetes
-      version: "v0.11.4"
+      version: "v0.12.1"
     - provider: xpkg.upbound.io/upbound/provider-aws-ec2
       # renovate: datasource=github-releases depName=upbound/provider-aws
       version: "v1.1.0"
