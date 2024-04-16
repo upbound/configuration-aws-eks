@@ -1,0 +1,56 @@
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: kcl.xeks.aws.platform.upbound.io
+  labels:
+    provider: aws
+    function: kcl
+spec:
+  writeConnectionSecretsToNamespace: upbound-system
+  compositeTypeRef:
+    apiVersion: aws.platform.upbound.io/v1alpha1
+    kind: XEKS
+  mode: Pipeline
+  pipeline:
+    - step: kcl
+      functionRef:
+        name: crossplane-contrib-function-kcl
+      input:
+        apiVersion: krm.kcl.dev/v1alpha1
+        kind: KCLRun
+        spec:
+          target: Resources
+          source: |
+            xrName = option("params")?.oxr?.metadata.name
+            providerConfigName = option("params")?.oxr?.spec.parameters.providerConfigName or "default"
+            deletionPolicy = option("params")?.oxr?.spec.parameters.deletionPolicy or "Delete"
+            region = option("params")?.oxr?.spec.parameters.region or ""
+            role = {
+              apiVersion = "iam.aws.upbound.io/v1beta1"
+              kind = "Role"
+              metadata.name = xrName + "-iam-role"
+              spec.providerConfigRef.name = providerConfigName
+              spec.deletionPolicy = deletionPolicy
+              spec.forProvider.assumeRolePolicy = """{
+                      "Version": "2012-10-17",
+                      "Statement": [
+                          {
+                              "Effect": "Allow",
+                              "Principal": {
+                                  "Service": [
+                                      "eks.amazonaws.com"
+                                  ]
+                              },
+                              "Action": [
+                                  "sts:AssumeRole"
+                              ]
+                          }
+                      ]
+                    }
+                  """
+            }
+            items = [role]
+
+    - step: automatically-detect-ready-composed-resources
+      functionRef:
+        name: crossplane-contrib-function-auto-ready
