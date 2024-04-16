@@ -25,10 +25,15 @@ spec:
             providerConfigName = option("params")?.oxr?.spec.parameters.providerConfigName or "default"
             deletionPolicy = option("params")?.oxr?.spec.parameters.deletionPolicy or "Delete"
             region = option("params")?.oxr?.spec.parameters.region or ""
+            id = option("params")?.oxr?.spec.parameters.id or ""
+
             role = {
               apiVersion = "iam.aws.upbound.io/v1beta1"
               kind = "Role"
               metadata.name = xrName + "-iam-role"
+              metadata.labels = {
+                "role" = "controlplane"
+              }
               spec.providerConfigRef.name = providerConfigName
               spec.deletionPolicy = deletionPolicy
               spec.forProvider.assumeRolePolicy = """{
@@ -49,7 +54,74 @@ spec:
                     }
                   """
             }
-            items = [role]
+
+            clusterRolePolicyAttachment = {
+              apiVersion = "iam.aws.upbound.io/v1beta1"
+              kind = "RolePolicyAttachment"
+              metadata.name = xrName + "-cluster-role-policy-attachment"
+              spec.providerConfigRef.name = providerConfigName
+              spec.deletionPolicy = deletionPolicy
+              spec.forProvider = {
+                policyArn = "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
+                roleSelector = {
+                  matchControllerRef = True
+                  matchLabels = {
+                    "role" = "controlplane"
+                  }
+                }
+              }
+            }
+
+            kubernetesVersion = option("params")?.oxr?.spec.parameters.version or ""
+            kubernetesCluster = {
+              apiVersion = "eks.aws.upbound.io/v1beta1"
+              kind = "Cluster"
+              metadata.name = xrName + "-kubernetes-cluster"
+              spec.providerConfigRef.name = providerConfigName
+              spec.deletionPolicy = deletionPolicy
+              spec.forProvider = {
+                region = region
+                version = kubernetesVersion
+                roleArnSelector = {
+                  matchControllerRef = True
+                  matchLabels = {
+                    "role" = "controlplane"
+                  }
+                }
+                vpcConfig = [
+                  {
+                    endpointPrivateAccess = True
+                    subnetIdSelector.matchLabels = {
+                      "access" = "public"
+                      "networks.aws.platform.upbound.io/network-id" = id
+                    }
+                  }
+                ]
+              }
+            }
+
+            clusterSecurityGroupId = option("params")?.ocds?[xrName + "-kubernetes-cluster"]?.Resource?.status?.atProvider?.vpcConfig?[0]?.clusterSecurityGroupId
+            if clusterSecurityGroupId:
+              clusterSecurityGroupImport = {
+                apiVersion = "ec2.aws.upbound.io/v1beta1"
+                kind = "SecurityGroup"
+                metadata.name = clusterSecurityGroupId
+                spec.providerConfigRef.name = providerConfigName
+                spec.deletionPolicy = deletionPolicy
+                spec.forProvider = {
+                  region = region
+                  tags = {
+                    "eks.aws.platform.upbound.io/discovery" = id
+                  }
+                }
+              }
+
+            items = [
+              role,
+              clusterRolePolicyAttachment,
+              kubernetesCluster,
+              clusterSecurityGroupImport
+            ]
 
     - step: automatically-detect-ready-composed-resources
       functionRef:
