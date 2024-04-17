@@ -230,6 +230,20 @@ spec:
               }
             } for i, a in eksAddonNames]
 
+            eksOidcIssuer = option("params")?.ocds?[xrName + "-kubernetes-cluster"]?.Resource?.status?.atProvider?.identity?[0]?.oidc?[0]?.issuer or ""
+            oidcProvider = {
+              apiVersion = "iam.aws.upbound.io/v1beta1"
+              kind = "OpenIDConnectProvider"
+              metadata.name = xrName + "-oidc-provider"
+              spec.providerConfigRef.name = providerConfigName
+              spec.deletionPolicy = deletionPolicy
+              spec.forProvider = {
+                clientIdList = ["sts.amazonaws.com"]
+                thumbprintList = ["9e99a48a9960b14926bb7f3b02e22da2b0ab7280"]
+                url = eksOidcIssuer
+              }
+            }
+
 
             items = [
               role,
@@ -239,6 +253,7 @@ spec:
               kubernetesClusterAuth,
               nodegroupRole,
               nodeGroupPublic,
+              oidcProvider,
             ] + nodeGroupRolePolicyAttachments + eksAddons
 
     - step: automatically-detect-ready-composed-resources
