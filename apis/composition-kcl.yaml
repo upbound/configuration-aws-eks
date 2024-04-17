@@ -162,14 +162,38 @@ spec:
                   """
             }
 
+            nodeGroupRolePolicies = [
+              "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
+              "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy",
+              "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
+            ]
+
+            nodeGroupRolePolicyAttachments = [{
+              apiVersion = "iam.aws.upbound.io/v1beta1"
+              kind = "RolePolicyAttachment"
+              metadata.name = xrName + "-nodegroup-rpa-{}".format(i)
+              spec.providerConfigRef.name = providerConfigName
+              spec.deletionPolicy = deletionPolicy
+              spec.forProvider = {
+                policyArn = p
+                roleSelector = {
+                  matchControllerRef = True
+                  matchLabels = {
+                    "role" = "nodegroup"
+                  }
+                }
+              }
+            } for i, p in nodeGroupRolePolicies]
+
+
             items = [
               role,
               clusterRolePolicyAttachment,
               kubernetesCluster,
               clusterSecurityGroupImport,
               kubernetesClusterAuth,
-              nodegroupRole
-            ]
+              nodegroupRole,
+            ] + nodeGroupRolePolicyAttachments
 
     - step: automatically-detect-ready-composed-resources
       functionRef:
