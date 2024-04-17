@@ -116,11 +116,59 @@ spec:
                 }
               }
 
+            uid = option("params")?.oxr?.metadata.uid or ""
+            connectionSecretNamespace = option("params")?.oxr?.spec.writeConnectionSecretToRef.namespace or "upbound-system"
+            kubernetesClusterAuth = {
+              apiVersion = "eks.aws.upbound.io/v1beta1"
+              kind = "ClusterAuth"
+              metadata.name = xrName + "cluster-auth"
+              spec.providerConfigRef.name = providerConfigName
+              spec.deletionPolicy = deletionPolicy
+              spec.forProvider = {
+                region = region
+                clusterNameSelector.matchControllerRef = True
+              }
+              spec.writeConnectionSecretToRef = {
+                  name = "{}-ekscluster".format(uid)
+                  namespace = connectionSecretNamespace
+              }
+            }
+
+            nodegroupRole = {
+              apiVersion = "iam.aws.upbound.io/v1beta1"
+              kind = "Role"
+              metadata.name = xrName + "-nodegroup-role"
+              metadata.labels = {
+                "role" = "nodegroup"
+              }
+              spec.providerConfigRef.name = providerConfigName
+              spec.deletionPolicy = deletionPolicy
+              spec.forProvider.assumeRolePolicy = """{
+                      "Version": "2012-10-17",
+                      "Statement": [
+                          {
+                              "Effect": "Allow",
+                              "Principal": {
+                                  "Service": [
+                                      "ec2.amazonaws.com"
+                                  ]
+                              },
+                              "Action": [
+                                  "sts:AssumeRole"
+                              ]
+                          }
+                      ]
+                    }
+                  """
+            }
+
             items = [
               role,
               clusterRolePolicyAttachment,
               kubernetesCluster,
-              clusterSecurityGroupImport
+              clusterSecurityGroupImport,
+              kubernetesClusterAuth,
+              nodegroupRole
             ]
 
     - step: automatically-detect-ready-composed-resources
