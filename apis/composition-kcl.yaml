@@ -19,7 +19,6 @@ spec:
         apiVersion: krm.kcl.dev/v1alpha1
         kind: KCLRun
         spec:
-          target: Resources
           source: |
             xrName = option("params")?.oxr?.metadata.name
             providerConfigName = option("params")?.oxr?.spec.parameters.providerConfigName or "default"
@@ -244,16 +243,34 @@ spec:
               }
             }
 
+            providerConfigHelm = {
+              apiVersion = "helm.crossplane.io/v1beta1"
+              kind = "ProviderConfig"
+              metadata.name = xrName
+              metadata.annotations = {
+                  "krm.kcl.dev/ready": "True"
+              }
+              spec.credentials = {
+                  secretRef = {
+                    name = "{}-ekscluster".format(uid)
+                    namespace = connectionSecretNamespace
+                    key = "kubeconfig"
+                  }
+                  source = "Secret"
+                }
+            }
+
 
             items = [
-              role,
-              clusterRolePolicyAttachment,
-              kubernetesCluster,
-              clusterSecurityGroupImport,
-              kubernetesClusterAuth,
-              nodegroupRole,
-              nodeGroupPublic,
-              oidcProvider,
+              role
+              clusterRolePolicyAttachment
+              kubernetesCluster
+              clusterSecurityGroupImport
+              kubernetesClusterAuth
+              nodegroupRole
+              nodeGroupPublic
+              oidcProvider
+              providerConfigHelm
             ] + nodeGroupRolePolicyAttachments + eksAddons
 
     - step: automatically-detect-ready-composed-resources
