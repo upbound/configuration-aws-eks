@@ -227,7 +227,7 @@ spec:
                 addonName = a
                 clusterNameSelector.matchControllerRef = True
               }
-            } for i, a in eksAddonNames]
+            } for a in eksAddonNames]
 
             eksOidcIssuer = option("params")?.ocds?[xrName + "-kubernetes-cluster"]?.Resource?.status?.atProvider?.identity?[0]?.oidc?[0]?.issuer or ""
             oidcProvider = {
@@ -243,10 +243,11 @@ spec:
               }
             }
 
-            providerConfigHelm = {
-              apiVersion = "helm.crossplane.io/v1beta1"
+            providerConfigTypes = ["helm", "kubernetes"]
+            providerConfigs = [{
+              apiVersion = "{}.crossplane.io/v1alpha1".format(t)
               kind = "ProviderConfig"
-              metadata.name = xrName
+              metadata.name = id + "-" + t
               metadata.annotations = {
                   "krm.kcl.dev/ready": "True"
               }
@@ -258,7 +259,7 @@ spec:
                   }
                   source = "Secret"
                 }
-            }
+            } for t in providerConfigTypes]
 
 
             items = [
@@ -270,8 +271,7 @@ spec:
               nodegroupRole
               nodeGroupPublic
               oidcProvider
-              providerConfigHelm
-            ] + nodeGroupRolePolicyAttachments + eksAddons
+            ] + nodeGroupRolePolicyAttachments + eksAddons + providerConfigs
 
     - step: automatically-detect-ready-composed-resources
       functionRef:
