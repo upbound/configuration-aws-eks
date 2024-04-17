@@ -216,6 +216,20 @@ spec:
               }
             }
 
+            eksAddonNames = ["aws-ebs-csi-driver", "vpc-cni"]
+            eksAddons = [{
+              apiVersion = "eks.aws.upbound.io/v1beta1"
+              kind = "Addon"
+              metadata.name = xrName + "-addon-" + a
+              spec.providerConfigRef.name = providerConfigName
+              spec.deletionPolicy = deletionPolicy
+              spec.forProvider = {
+                region = region
+                addonName = a
+                clusterNameSelector.matchControllerRef = True
+              }
+            } for i, a in eksAddonNames]
+
 
             items = [
               role,
@@ -225,7 +239,7 @@ spec:
               kubernetesClusterAuth,
               nodegroupRole,
               nodeGroupPublic,
-            ] + nodeGroupRolePolicyAttachments
+            ] + nodeGroupRolePolicyAttachments + eksAddons
 
     - step: automatically-detect-ready-composed-resources
       functionRef:
