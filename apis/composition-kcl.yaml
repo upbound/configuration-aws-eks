@@ -283,6 +283,62 @@ spec:
               }
             }
 
+            nodeGroupRoleArn = option("params")?.ocds?[xrName + "-nodegroup-role"]?.Resource?.status?.atProvider?.arn or ""
+            autoscalerArn = option("params")?.oxr?.spec.parameters.iam.autoscalerArn or ""
+            adminRoleArn = option("params")?.oxr?.spec.parameters.iam.roleArn or ""
+            adminUser = option("params")?.oxr?.spec.parameters.iam.userArn or ""
+            awsAuth = {
+              apiVersion = "kubernetes.crossplane.io/v1alpha2"
+              kind = "Object"
+              metadata.name = id + "-aws-auth"
+              spec.providerConfigRef.name = id + "-kubernetes"
+              spec.deletionPolicy = "Orphan"
+              spec.forProvider = {
+                manifest: {
+                  apiVersion = "v1"
+                  kind = "ConfigMap"
+                  metadata.namespace = "kube-system"
+                  metadata.name = "aws-auth"
+                  data = {
+                    mapRoles = """
+                      - groups:
+                        - system:bootstrappers
+                        - system:nodes
+                        rolearn: {}
+                        username: system:node:{{EC2PrivateDNSName}}
+                      - groups:
+                        - system:bootstrappers
+                        - system:nodes
+                        rolearn: {}
+                        username: system:node:{{EC2PrivateDNSName}}
+                      - groups:
+                        - system:masters
+                        rolearn: {}
+                        username: adminrole
+                    """.format(nodeGroupRoleArn, autoscalerArn, adminRoleArn)
+
+                    mapUsers = """
+                      - groups:
+                        - system:masters
+                        userarn: {}
+                        username: adminuser
+                    """.format(adminUser)
+                  }
+                }
+              }
+            }
+
+            connectionDetails = {
+              apiVersion: "meta.krm.kcl.dev/v1alpha1"
+              kind: "CompositeConnectionDetails"
+              if kubernetesClusterAuth.metadata.name in option("params").ocds:
+                  data: {
+                      kubeconfig = option("params")?.ocds[kubernetesClusterAuth.metadata.name].ConnectionDetails.kubeconfig
+                  }
+              else:
+                  data: {}
+            }
+
             items = [
               role
               clusterRolePolicyAttachment
@@ -293,6 +349,8 @@ spec:
               nodeGroupPublic
               oidcProvider
               irsaSettings
+              awsAuth
+              connectionDetails
             ] + nodeGroupRolePolicyAttachments + eksAddons + providerConfigs
 
     - step: automatically-detect-ready-composed-resources
