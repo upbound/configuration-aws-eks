@@ -186,6 +186,37 @@ spec:
             } for i, p in nodeGroupRolePolicies]
 
 
+            nodeCount = option("params")?.oxr?.spec.parameters.nodes.count or ""
+            instanceType = option("params")?.oxr?.spec.parameters.nodes.instanceType or ""
+            nodeGroupPublic = {
+              apiVersion = "eks.aws.upbound.io/v1beta1"
+              kind = "NodeGroup"
+              metadata.name = xrName + "-nodegroup-public"
+              spec.providerConfigRef.name = providerConfigName
+              spec.deletionPolicy = deletionPolicy
+              spec.forProvider = {
+                region = region
+                clusterNameSelector.matchControllerRef = True
+                nodeRoleArnSelector = {
+                  matchControllerRef = True
+                  matchLabels = {
+                    "role" = "nodegroup"
+                  }
+                }
+                scalingConfig = [{
+                  desiredSize = nodeCount
+                  maxSize = 100
+                  minSize = 1
+                }]
+                instanceTypes = [instanceType]
+                subnetIdSelector.matchLabels = {
+                  "networks.aws.platform.upbound.io/network-id" = id
+                  "access" = "public"
+                }
+              }
+            }
+
+
             items = [
               role,
               clusterRolePolicyAttachment,
@@ -193,6 +224,7 @@ spec:
               clusterSecurityGroupImport,
               kubernetesClusterAuth,
               nodegroupRole,
+              nodeGroupPublic,
             ] + nodeGroupRolePolicyAttachments
 
     - step: automatically-detect-ready-composed-resources
