@@ -261,6 +261,27 @@ spec:
                 }
             } for t in providerConfigTypes]
 
+            oidcArn = option("params")?.ocds?[xrName + "-kubernetes-cluster"]?.Resource?.status?.atProvider?.arn or ""
+            oidcHost = eksOidcIssuer.strip("https://") or ""
+            irsaSettings = {
+              apiVersion = "kubernetes.crossplane.io/v1alpha2"
+              kind = "Object"
+              metadata.name = id + "-irsa-settings"
+              spec.providerConfigRef.name = id + "-kubernetes"
+              spec.deletionPolicy = "Orphan"
+              spec.forProvider = {
+                manifest: {
+                  apiVersion = "v1"
+                  kind = "ConfigMap"
+                  metadata.namespace = "default"
+                  metadata.name = "{}-irsa-settings".format(id)
+                  data = {
+                    oidc_arn = oidcArn
+                    oidc_host = oidcHost
+                  }
+                }
+              }
+            }
 
             items = [
               role
@@ -271,6 +292,7 @@ spec:
               nodegroupRole
               nodeGroupPublic
               oidcProvider
+              irsaSettings
             ] + nodeGroupRolePolicyAttachments + eksAddons + providerConfigs
 
     - step: automatically-detect-ready-composed-resources
