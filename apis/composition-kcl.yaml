@@ -300,7 +300,7 @@ spec:
                   metadata.namespace = "kube-system"
                   metadata.name = "aws-auth"
                   data = {
-                    mapRoles = """
+                    mapRoles = """\
                       - groups:
                         - system:bootstrappers
                         - system:nodes
@@ -316,8 +316,7 @@ spec:
                         rolearn: {}
                         username: adminrole
                     """.format(nodeGroupRoleArn, autoscalerArn, adminRoleArn)
-
-                    mapUsers = """
+                    mapUsers = """\
                       - groups:
                         - system:masters
                         userarn: {}
