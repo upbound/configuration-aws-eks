@@ -247,7 +247,7 @@ spec:
             providerConfigs = [{
               apiVersion = "{}.crossplane.io/v1alpha1".format(t)
               kind = "ProviderConfig"
-              metadata.name = id + "-" + t
+              metadata.name = id + "-" + t # need to deviate metadata.name until https://github.com/crossplane-contrib/function-kcl/issues/77 is fixed
               metadata.annotations = {
                   "krm.kcl.dev/ready": "True"
               }
