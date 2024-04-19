@@ -7,7 +7,7 @@ spec:
     matchLabels:
       function: kcl
   parameters:
-    id: configuration-aws-eks
+    id: configuration-aws-eks-kcl
     region: us-west-2
     version: "1.27"
     iam:
@@ -18,5 +18,5 @@ spec:
       count: 1
       instanceType: t3.small
   writeConnectionSecretToRef:
-    name: configuration-aws-eks-kubeconfig
+    name: configuration-aws-eks-kcl-kubeconfig
     namespace: upbound-system

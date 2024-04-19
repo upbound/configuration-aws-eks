@@ -66,7 +66,7 @@ build.init: $(UP)
 SKIP_DELETE ?=
 uptest: $(UPTEST) $(KUBECTL) $(KUTTL)
 	@$(INFO) running automated tests
-	@KUBECTL=$(KUBECTL) KUTTL=$(KUTTL) CROSSPLANE_NAMESPACE=$(CROSSPLANE_NAMESPACE) $(UPTEST) e2e examples/network-xr.yaml,examples/eks-xr-kcl.yaml --data-source="${UPTEST_DATASOURCE_PATH}" --setup-script=test/setup.sh --default-timeout=2400 $(SKIP_DELETE) || $(FAIL)
+	@KUBECTL=$(KUBECTL) KUTTL=$(KUTTL) CROSSPLANE_NAMESPACE=$(CROSSPLANE_NAMESPACE) $(UPTEST) e2e examples/network-xr.yaml,examples/network-xr-kcl.yaml,examples/eks-xr.yaml,examples/eks-xr-kcl.yaml --data-source="${UPTEST_DATASOURCE_PATH}" --setup-script=test/setup.sh --default-timeout=2400 $(SKIP_DELETE) || $(FAIL)
 	@$(OK) running automated tests
 
 # This target requires the following environment variables to be set:
