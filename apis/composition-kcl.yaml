@@ -99,7 +99,7 @@ spec:
               }
             }
 
-            clusterSecurityGroupId = option("params")?.ocds?[xrName + "-kubernetes-cluster"]?.Resource?.status?.atProvider?.vpcConfig?[0]?.clusterSecurityGroupId
+            clusterSecurityGroupId = option("params")?.ocds?[xrName + "-kubernetes-cluster"]?.Resource?.status?.atProvider?.vpcConfig?[0]?.clusterSecurityGroupId or False
             if clusterSecurityGroupId:
               clusterSecurityGroupImport = {
                 apiVersion = "ec2.aws.upbound.io/v1beta1"
@@ -247,9 +247,10 @@ spec:
             providerConfigs = [{
               apiVersion = "{}.crossplane.io/v1alpha1".format(t)
               kind = "ProviderConfig"
-              metadata.name = id + "-" + t # need to deviate metadata.name until https://github.com/crossplane-contrib/function-kcl/issues/77 is fixed
+              metadata.name = id
               metadata.annotations = {
                   "krm.kcl.dev/ready": "True"
+                  "krm.kcl.dev/composition-resource-name" = "providerConfig-" + t
               }
               spec.credentials = {
                   secretRef = {
@@ -267,7 +268,7 @@ spec:
               apiVersion = "kubernetes.crossplane.io/v1alpha2"
               kind = "Object"
               metadata.name = id + "-irsa-settings"
-              spec.providerConfigRef.name = id + "-kubernetes"
+              spec.providerConfigRef.name = id
               spec.deletionPolicy = "Orphan"
               spec.forProvider = {
                 manifest: {
@@ -291,7 +292,7 @@ spec:
               apiVersion = "kubernetes.crossplane.io/v1alpha2"
               kind = "Object"
               metadata.name = id + "-aws-auth"
-              spec.providerConfigRef.name = id + "-kubernetes"
+              spec.providerConfigRef.name = id
               spec.deletionPolicy = "Orphan"
               spec.forProvider = {
                 manifest: {
