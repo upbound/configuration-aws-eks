@@ -99,7 +99,7 @@ spec:
               }
             }
 
-            clusterSecurityGroupId = option("params")?.ocds?[xrName + "-kubernetes-cluster"]?.Resource?.status?.atProvider?.vpcConfig?[0]?.clusterSecurityGroupId or False
+            clusterSecurityGroupId = option("params")?.ocds?[kubernetesCluster.metadata.name]?.Resource?.status?.atProvider?.vpcConfig?[0]?.clusterSecurityGroupId or False
             if clusterSecurityGroupId:
               clusterSecurityGroupImport = {
                 apiVersion = "ec2.aws.upbound.io/v1beta1"
@@ -162,6 +162,7 @@ spec:
             }
 
             nodeGroupRolePolicies = [
+              "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy",
               "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy",
               "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy",
               "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly",
@@ -229,7 +230,7 @@ spec:
               }
             } for a in eksAddonNames]
 
-            eksOidcIssuer = option("params")?.ocds?[xrName + "-kubernetes-cluster"]?.Resource?.status?.atProvider?.identity?[0]?.oidc?[0]?.issuer or ""
+            eksOidcIssuer = option("params")?.ocds?[kubernetesCluster.metadata.name]?.Resource?.status?.atProvider?.identity?[0]?.oidc?[0]?.issuer or ""
             oidcProvider = {
               apiVersion = "iam.aws.upbound.io/v1beta1"
               kind = "OpenIDConnectProvider"
@@ -262,7 +263,7 @@ spec:
                 }
             } for t in providerConfigTypes]
 
-            oidcArn = option("params")?.ocds?[xrName + "-kubernetes-cluster"]?.Resource?.status?.atProvider?.arn or ""
+            oidcArn = option("params")?.ocds?[kubernetesCluster.metadata.name]?.Resource?.status?.atProvider?.arn or ""
             oidcHost = eksOidcIssuer.strip("https://") or ""
             irsaSettings = {
               apiVersion = "kubernetes.crossplane.io/v1alpha2"
@@ -284,7 +285,7 @@ spec:
               }
             }
 
-            nodeGroupRoleArn = option("params")?.ocds?[xrName + "-nodegroup-role"]?.Resource?.status?.atProvider?.arn or ""
+            nodeGroupRoleArn = option("params")?.ocds?[nodegroupRole.metadata.name]?.Resource?.status?.atProvider?.arn or ""
             autoscalerArn = option("params")?.oxr?.spec.parameters.iam.autoscalerArn or ""
             adminRoleArn = option("params")?.oxr?.spec.parameters.iam.roleArn or ""
             adminUser = option("params")?.oxr?.spec.parameters.iam.userArn or ""
