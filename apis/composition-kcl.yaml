@@ -216,33 +216,38 @@ spec:
               }
             }
 
-            eksAddonNames = ["aws-ebs-csi-driver", "vpc-cni"]
-            eksAddons = [{
-              apiVersion = "eks.aws.upbound.io/v1beta1"
-              kind = "Addon"
-              metadata.name = xrName + "-addon-" + a
-              spec.providerConfigRef.name = providerConfigName
-              spec.deletionPolicy = deletionPolicy
-              spec.forProvider = {
-                region = region
-                addonName = a
-                clusterNameSelector.matchControllerRef = True
-              }
-            } for a in eksAddonNames]
+            nodeGroupStatus = option("params")?.ocds?[nodeGroupPublic.metadata.name]?.Resource?.status?.atProvider?.status or ""
+            if nodeGroupStatus == "ACTIVE":
+              eksAddonNames = ["aws-ebs-csi-driver", "vpc-cni"]
+              _eksAddons = [{
+                apiVersion = "eks.aws.upbound.io/v1beta1"
+                kind = "Addon"
+                metadata.name = xrName + "-addon-" + a
+                spec.providerConfigRef.name = providerConfigName
+                spec.deletionPolicy = deletionPolicy
+                spec.forProvider = {
+                  region = region
+                  addonName = a
+                  clusterNameSelector.matchControllerRef = True
+                }
+              } for a in eksAddonNames]
+            else:
+              _eksAddons = []
 
             eksOidcIssuer = option("params")?.ocds?[kubernetesCluster.metadata.name]?.Resource?.status?.atProvider?.identity?[0]?.oidc?[0]?.issuer or ""
-            oidcProvider = {
-              apiVersion = "iam.aws.upbound.io/v1beta1"
-              kind = "OpenIDConnectProvider"
-              metadata.name = xrName + "-oidc-provider"
-              spec.providerConfigRef.name = providerConfigName
-              spec.deletionPolicy = deletionPolicy
-              spec.forProvider = {
-                clientIdList = ["sts.amazonaws.com"]
-                thumbprintList = ["9e99a48a9960b14926bb7f3b02e22da2b0ab7280"]
-                url = eksOidcIssuer
+            if len(eksOidcIssuer) > 0:
+              oidcProvider = {
+                apiVersion = "iam.aws.upbound.io/v1beta1"
+                kind = "OpenIDConnectProvider"
+                metadata.name = xrName + "-oidc-provider"
+                spec.providerConfigRef.name = providerConfigName
+                spec.deletionPolicy = deletionPolicy
+                spec.forProvider = {
+                  clientIdList = ["sts.amazonaws.com"]
+                  thumbprintList = ["9e99a48a9960b14926bb7f3b02e22da2b0ab7280"]
+                  url = eksOidcIssuer
+                }
               }
-            }
 
             providerConfigTypes = ["helm", "kubernetes"]
             providerConfigs = [{
@@ -303,27 +308,25 @@ spec:
                   metadata.name = "aws-auth"
                   data = {
                     mapRoles = """\
-                      - groups:
-                        - system:bootstrappers
-                        - system:nodes
-                        rolearn: {}
-                        username: system:node:{{EC2PrivateDNSName}}
-                      - groups:
-                        - system:bootstrappers
-                        - system:nodes
-                        rolearn: {}
-                        username: system:node:{{EC2PrivateDNSName}}
-                      - groups:
-                        - system:masters
-                        rolearn: {}
-                        username: adminrole
-                    """.format(nodeGroupRoleArn, autoscalerArn, adminRoleArn)
+            - groups:
+              - system:bootstrappers
+              - system:nodes
+              rolearn: ${nodeGroupRoleArn}
+              username: system:node:{{EC2PrivateDNSName}}
+            - groups:
+              - system:bootstrappers
+              - system:nodes
+              rolearn: ${autoscalerArn}
+              username: system:node:{{EC2PrivateDNSName}}
+            - groups:
+              - system:masters
+              rolearn: ${adminRoleArn}
+              username: adminrole"""
                     mapUsers = """\
-                      - groups:
-                        - system:masters
-                        userarn: {}
-                        username: adminuser
-                    """.format(adminUser)
+            - groups:
+              - system:masters
+              userarn: ${adminUser}
+              username: adminuser"""
                   }
                 }
               }
@@ -352,7 +355,7 @@ spec:
               irsaSettings
               awsAuth
               connectionDetails
-            ] + nodeGroupRolePolicyAttachments + eksAddons + providerConfigs
+            ] + nodeGroupRolePolicyAttachments + _eksAddons + providerConfigs
 
     - step: automatically-detect-ready-composed-resources
       functionRef:
