@@ -4,6 +4,7 @@ metadata:
   name: xeks.aws.platform.upbound.io
   labels:
     provider: aws
+    function: patch-and-transform
 spec:
   writeConnectionSecretsToNamespace: upbound-system
   compositeTypeRef:

@@ -3,6 +3,8 @@ kind: CompositeResourceDefinition
 metadata:
   name: xeks.aws.platform.upbound.io
 spec:
+  defaultCompositionRef:
+    name: xeks.aws.platform.upbound.io
   connectionSecretKeys:
     - kubeconfig
   group: aws.platform.upbound.io

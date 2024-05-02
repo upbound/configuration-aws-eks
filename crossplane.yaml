@@ -36,3 +36,9 @@ spec:
     - function: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform
       # renovate: datasource=github-releases depName=crossplane-contrib/function-patch-and-transform
       version: "v0.4.0"
+    - function: xpkg.upbound.io/crossplane-contrib/function-kcl
+      # renovate: datasource=github-releases depName=crossplane-contrib/function-kcl
+      version: "v0.6.0"
+    - function: xpkg.upbound.io/crossplane-contrib/function-auto-ready
+      # renovate: datasource=github-releases depName=crossplane-contrib/function-auto-ready
+      version: "v0.2.1"
