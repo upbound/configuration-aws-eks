@@ -76,6 +76,9 @@ spec:
               apiVersion = "eks.aws.upbound.io/v1beta1"
               kind = "Cluster"
               metadata.name = xrName + "-kubernetes-cluster"
+              metadata.annotations = {
+                "krm.kcl.dev/composition-resource-name" = "kubernetesCluster"
+              }
               spec.providerConfigRef.name = providerConfigName
               spec.deletionPolicy = deletionPolicy
               spec.forProvider = {
@@ -120,7 +123,7 @@ spec:
             kubernetesClusterAuth = {
               apiVersion = "eks.aws.upbound.io/v1beta1"
               kind = "ClusterAuth"
-              metadata.name = xrName + "cluster-auth"
+              metadata.name = xrName + "-cluster-auth"
               spec.providerConfigRef.name = providerConfigName
               spec.deletionPolicy = deletionPolicy
               spec.forProvider = {
@@ -192,6 +195,9 @@ spec:
               apiVersion = "eks.aws.upbound.io/v1beta1"
               kind = "NodeGroup"
               metadata.name = xrName + "-nodegroup-public"
+              metadata.annotations = {
+                "krm.kcl.dev/composition-resource-name" = "nodeGroupPublic"
+              }
               spec.providerConfigRef.name = providerConfigName
               spec.deletionPolicy = deletionPolicy
               spec.forProvider = {
@@ -216,23 +222,38 @@ spec:
               }
             }
 
-            nodeGroupStatus = option("params")?.ocds?[nodeGroupPublic.metadata.name]?.Resource?.status?.atProvider?.status or ""
-            if nodeGroupStatus == "ACTIVE":
-              eksAddonNames = ["aws-ebs-csi-driver", "vpc-cni"]
-              _eksAddons = [{
-                apiVersion = "eks.aws.upbound.io/v1beta1"
-                kind = "Addon"
-                metadata.name = xrName + "-addon-" + a
-                spec.providerConfigRef.name = providerConfigName
-                spec.deletionPolicy = deletionPolicy
-                spec.forProvider = {
-                  region = region
-                  addonName = a
-                  clusterNameSelector.matchControllerRef = True
-                }
-              } for a in eksAddonNames]
-            else:
-              _eksAddons = []
+            cniAddon = {
+              apiVersion = "eks.aws.upbound.io/v1beta1"
+              kind = "Addon"
+              metadata.name = xrName + "-cni-addon"
+              metadata.annotations = {
+                "krm.kcl.dev/composition-resource-name" = "cniAddon"
+              }
+              spec.providerConfigRef.name = providerConfigName
+              spec.deletionPolicy = deletionPolicy
+              spec.forProvider = {
+                region = region
+                addonName = "vpc-cni"
+                clusterNameSelector.matchControllerRef = True
+                configurationValues = '{"env": {"AWS_VPC_K8S_CNI_CUSTOM_NETWORK_CFG":"false"}}' # see https://github.com/aws/amazon-vpc-cni-k8s/blob/master/README.md for different options
+              }
+            }
+
+            ebsCsiAddon = {
+              apiVersion = "eks.aws.upbound.io/v1beta1"
+              kind = "Addon"
+              metadata.name = xrName + "-ebs-csi-addon"
+              metadata.annotations = {
+                "krm.kcl.dev/composition-resource-name" = "ebsCsiAddon"
+              }
+              spec.providerConfigRef.name = providerConfigName
+              spec.deletionPolicy = deletionPolicy
+              spec.forProvider = {
+                region = region
+                addonName = "aws-ebs-csi-driver"
+                clusterNameSelector.matchControllerRef = True
+              }
+            }
 
             eksOidcIssuer = option("params")?.ocds?[kubernetesCluster.metadata.name]?.Resource?.status?.atProvider?.identity?[0]?.oidc?[0]?.issuer or ""
             if len(eksOidcIssuer) > 0:
@@ -355,8 +376,23 @@ spec:
               irsaSettings
               awsAuth
               connectionDetails
-            ] + nodeGroupRolePolicyAttachments + _eksAddons + providerConfigs
+              cniAddon
+              ebsCsiAddon
+            ] + nodeGroupRolePolicyAttachments + providerConfigs
 
     - step: automatically-detect-ready-composed-resources
       functionRef:
         name: crossplane-contrib-function-auto-ready
+
+    - step: sequence-creation
+      functionRef:
+        name: crossplane-contrib-function-sequencer
+      input:
+        apiVersion: sequencer.fn.crossplane.io/v1beta1
+        kind: Input
+        rules:
+          - sequence:
+              - kubernetesCluster
+              - cniAddon
+              - nodeGroupPublic
+              - ebsCsiAddon

@@ -360,16 +360,6 @@ spec:
                 type: PatchSet
               - patchSetName: region
                 type: PatchSet
-              - fromFieldPath: status.eks.clusterName
-                policy:
-                  fromFieldPath: Required
-                toFieldPath: metadata.annotations[crossplane.io/external-name]
-                transforms:
-                  - string:
-                      fmt: '%s:aws-ebs-csi-driver'
-                      type: Format
-                    type: string
-                type: FromCompositeFieldPath
 
           - name: cniAddon
             base:
@@ -381,6 +371,7 @@ spec:
                   clusterNameSelector:
                     matchControllerRef: true
                   preserve: false
+                  configurationValues: '{"env": {"AWS_VPC_K8S_CNI_CUSTOM_NETWORK_CFG":"false"}}'  # see https://github.com/aws/amazon-vpc-cni-k8s/blob/master/README.md for different options
             patches:
               - patchSetName: providerConfigRef
                 type: PatchSet
@@ -388,16 +379,6 @@ spec:
                 type: PatchSet
               - patchSetName: region
                 type: PatchSet
-              - fromFieldPath: status.eks.clusterName
-                policy:
-                  fromFieldPath: Required
-                toFieldPath: metadata.annotations[crossplane.io/external-name]
-                transforms:
-                  - string:
-                      fmt: '%s:vpc-cni'
-                      type: Format
-                    type: string
-                type: FromCompositeFieldPath
 
           - name: oidcProvider
             base:
@@ -583,3 +564,16 @@ spec:
                   fromFieldPath: Optional
                 toFieldPath: spec.forProvider.manifest.data.mapUsers
                 type: CombineFromComposite
+
+    - step: sequence-creation
+      functionRef:
+        name: crossplane-contrib-function-sequencer
+      input:
+        apiVersion: sequencer.fn.crossplane.io/v1beta1
+        kind: Input
+        rules:
+          - sequence:
+              - kubernetesCluster
+              - cniAddon
+              - nodeGroupPublic
+              - ebsCsiAddon
