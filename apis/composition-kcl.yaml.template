@@ -19,7 +19,7 @@ spec:
         apiVersion: krm.kcl.dev/v1alpha1
         kind: KCLRun
         spec:
-          source: ./xeks.k
+          source: apis/xeks.k
 
     - step: automatically-detect-ready-composed-resources
       functionRef:

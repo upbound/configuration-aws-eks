@@ -5,7 +5,9 @@ composition = yaml.decode(file.read("apis/composition-kcl.yaml.template"))
 
 _kcl_step = composition.spec.pipeline[0]
 
-_kcl_step.input.spec.source = file.read("apis/xeks.k")
+kcl_file = _kcl_step.input.spec.source
+
+_kcl_step.input.spec.source = file.read(kcl_file)
 
 composition_yaml = yaml.encode(composition)
 
