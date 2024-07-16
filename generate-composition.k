@@ -1,7 +1,7 @@
 import file
 import yaml
 
-composition = yaml.decode(file.read("apis/composition-kcl.yaml.template"))
+composition = yaml.decode(file.read("apis/composition-kcl.yaml"))
 
 _kcl_step = composition.spec.pipeline[0]
 
@@ -11,4 +11,4 @@ _kcl_step.input.spec.source = file.read(kcl_file)
 
 composition_yaml = yaml.encode(composition)
 
-file.write("apis/composition-kcl.yaml", composition_yaml)
+file.write("apis/composition-kcl-generated.yaml", composition_yaml)

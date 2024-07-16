@@ -19,7 +19,7 @@ UPTEST_VERSION = v0.11.1
 # ====================================================================================
 # Setup XPKG
 XPKG_DIR = $(shell pwd)
-XPKG_IGNORE = .github/workflows/*.yaml,.github/workflows/*.yml,examples/*.yaml,.work/uptest-datasource.yaml
+XPKG_IGNORE = .github/workflows/*.yaml,.github/workflows/*.yml,examples/*.yaml,.work/uptest-datasource.yaml,apis/composition-kcl.yaml
 XPKG_REG_ORGS ?= xpkg.upbound.io/upbound
 # NOTE(hasheddan): skip promoting on xpkg.upbound.io as channel tags are
 # inferred.
@@ -82,7 +82,7 @@ kcl-generate:
 	kcl generate-composition.k
 
 render-kcl: kcl-generate
-	crossplane beta render examples/eks-xr.yaml apis/composition-kcl.yaml examples/functions.yaml -r
+	crossplane beta render examples/eks-xr.yaml apis/composition-kcl-generated.yaml examples/functions.yaml -r
 
 yamllint:
 	@$(INFO) running yamllint
