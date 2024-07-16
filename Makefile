@@ -53,7 +53,7 @@ submodules:
 
 # We must ensure up is installed in tool cache prior to build as including the k8s_tools machinery prior to the xpkg
 # machinery sets UP to point to tool cache.
-build.init: $(UP)
+build.init: $(UP) kcl-generate
 
 # ====================================================================================
 # End to End Testing
@@ -76,6 +76,12 @@ e2e: build controlplane.up local.xpkg.deploy.configuration.$(PROJECT_NAME) uptes
 
 render:
 	crossplane beta render examples/eks-xr.yaml apis/composition.yaml examples/functions.yaml -r
+	crossplane beta render examples/eks-xr.yaml apis/composition-kcl.yaml examples/functions.yaml -r
+
+kcl-generate:
+	kcl generate-composition.k
+
+render-kcl: kcl-generate
 	crossplane beta render examples/eks-xr.yaml apis/composition-kcl.yaml examples/functions.yaml -r
 
 yamllint:
