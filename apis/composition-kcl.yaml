@@ -19,7 +19,7 @@ spec:
         apiVersion: krm.kcl.dev/v1alpha1
         kind: KCLRun
         spec:
-          source: apis/xeks.k # Replaced by kcl generation, see `make kcl-generate`
+          source: apis/xeks.k  # Replaced by kcl generation, see `make kcl-generate`
 
     - step: automatically-detect-ready-composed-resources
       functionRef:
