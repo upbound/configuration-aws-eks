@@ -14,6 +14,7 @@ PLATFORMS ?= linux_amd64
 UP_VERSION = v0.27.0
 UP_CHANNEL = stable
 UPTEST_VERSION = v0.11.1
+CROSSPLANE_CLI_VERSION=v1.16.0
 
 -include build/makelib/k8s_tools.mk
 # ====================================================================================
@@ -27,8 +28,12 @@ XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/upbound
 XPKGS = $(PROJECT_NAME)
 -include build/makelib/xpkg.mk
 
+CROSSPLANE_VERSION = 1.16.0-up.1
+CROSSPLANE_CHART_REPO = https://charts.upbound.io/stable
+CROSSPLANE_CHART_NAME = universal-crossplane
 CROSSPLANE_NAMESPACE = upbound-system
 CROSSPLANE_ARGS = "--enable-usages"
+KIND_CLUSTER_NAME = uptest-$(PROJECT_NAME)
 -include build/makelib/local.xpkg.mk
 -include build/makelib/controlplane.mk
 
@@ -46,8 +51,7 @@ fallthrough: submodules
 	@echo Initial setup complete. Running make again . . .
 	@make
 
-# Update the submodules, such as the common build scripts.
-submodules:
+submodules: ## Update the submodules, such as the common build scripts.
 	@git submodule sync
 	@git submodule update --init --recursive
 
@@ -72,21 +76,23 @@ uptest: $(UPTEST) $(KUBECTL) $(KUTTL)
 # This target requires the following environment variables to be set:
 # - UPTEST_CLOUD_CREDENTIALS, cloud credentials for the provider being tested, e.g. export UPTEST_CLOUD_CREDENTIALS=$(cat ~/.aws/credentials)
 # Use `make e2e SKIP_DELETE=--skip-delete` to skip deletion of resources created during the test.
-e2e: build controlplane.up local.xpkg.deploy.configuration.$(PROJECT_NAME) uptest
+e2e: build controlplane.up local.xpkg.deploy.configuration.$(PROJECT_NAME) uptest  ## Run uptest together with all dependencies. Use `make e2e SKIP_DELETE=--skip-delete` to skip deletion of resources.
 
-render:
-	crossplane beta render examples/eks-xr.yaml apis/composition.yaml examples/functions.yaml -r
-	crossplane beta render examples/eks-xr.yaml apis/composition-kcl.yaml examples/functions.yaml -r
+kcl-generate: $(KCL) ## Generate KCL-based Composition
+	$(KCL) generate-composition.k
 
-kcl-generate:
-	kcl generate-composition.k
+render-kcl: kcl-generate $(CROSSPLANE_CLI) ## Crossplane render kcl generated composition
+	$(CROSSPLANE_CLI) beta render examples/eks-xr.yaml apis/composition-kcl-generated.yaml examples/functions.yaml -r
 
-render-kcl: kcl-generate
-	crossplane beta render examples/eks-xr.yaml apis/composition-kcl-generated.yaml examples/functions.yaml -r
+render: $(CROSSPLANE_CLI) ## Crossplane render
+	$(CROSSPLANE_CLI) beta render examples/eks-xr.yaml apis/composition.yaml examples/functions.yaml -r
 
-yamllint:
+yamllint: ## Static yamllint check
 	@$(INFO) running yamllint
 	@yamllint ./apis || $(FAIL)
 	@$(OK) running yamllint
 
-.PHONY: uptest e2e render yamllint
+help.local:
+	@grep -E '^[a-zA-Z_-]+.*:.*?## .*$$' Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+
+.PHONY: uptest e2e render yamllint help.local
