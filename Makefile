@@ -20,7 +20,7 @@ CROSSPLANE_CLI_VERSION=v1.16.0
 # ====================================================================================
 # Setup XPKG
 XPKG_DIR = $(shell pwd)
-XPKG_IGNORE = .github/workflows/*.yaml,.github/workflows/*.yml,examples/*.yaml,.work/uptest-datasource.yaml,apis/composition-kcl.yaml
+XPKG_IGNORE = .github/workflows/*.yaml,.github/workflows/*.yml,examples/*.yaml,.work/uptest-datasource.yaml
 XPKG_REG_ORGS ?= xpkg.upbound.io/upbound
 # NOTE(hasheddan): skip promoting on xpkg.upbound.io as channel tags are
 # inferred.
@@ -57,7 +57,7 @@ submodules: ## Update the submodules, such as the common build scripts.
 
 # We must ensure up is installed in tool cache prior to build as including the k8s_tools machinery prior to the xpkg
 # machinery sets UP to point to tool cache.
-build.init: $(UP) kcl-generate
+build.init: $(UP) kcl
 
 # ====================================================================================
 # End to End Testing
@@ -70,7 +70,7 @@ build.init: $(UP) kcl-generate
 SKIP_DELETE ?=
 uptest: $(UPTEST) $(KUBECTL) $(KUTTL)
 	@$(INFO) running automated tests
-	@KUBECTL=$(KUBECTL) KUTTL=$(KUTTL) CROSSPLANE_NAMESPACE=$(CROSSPLANE_NAMESPACE) $(UPTEST) e2e examples/network-xr.yaml,examples/network-xr-kcl.yaml,examples/eks-xr.yaml,examples/eks-xr-kcl.yaml --data-source="${UPTEST_DATASOURCE_PATH}" --setup-script=test/setup.sh --default-timeout=2400 $(SKIP_DELETE) || $(FAIL)
+	@KUBECTL=$(KUBECTL) KUTTL=$(KUTTL) CROSSPLANE_NAMESPACE=$(CROSSPLANE_NAMESPACE) CROSSPLANE_CLI=$(CROSSPLANE_CLI) $(UPTEST) e2e "${UPTEST_EXAMPLE_LIST}" --data-source="${UPTEST_DATASOURCE_PATH}" --setup-script=test/setup.sh --default-timeout=2400 $(SKIP_DELETE) || $(FAIL)
 	@$(OK) running automated tests
 
 # This target requires the following environment variables to be set:
@@ -78,21 +78,45 @@ uptest: $(UPTEST) $(KUBECTL) $(KUTTL)
 # Use `make e2e SKIP_DELETE=--skip-delete` to skip deletion of resources created during the test.
 e2e: build controlplane.up local.xpkg.deploy.configuration.$(PROJECT_NAME) uptest  ## Run uptest together with all dependencies. Use `make e2e SKIP_DELETE=--skip-delete` to skip deletion of resources.
 
-kcl-generate: $(KCL) ## Generate KCL-based Composition
-	$(KCL) generate-composition.k
+kcl: $(KCL) ## Generate KCL-based Composition
+	$(KCL) apis/kcl/generate.k
 
-render-kcl: kcl-generate $(CROSSPLANE_CLI) ## Crossplane render kcl generated composition
-	$(CROSSPLANE_CLI) beta render examples/eks-xr.yaml apis/composition-kcl-generated.yaml examples/functions.yaml -r
-
-render: $(CROSSPLANE_CLI) ## Crossplane render
-	$(CROSSPLANE_CLI) beta render examples/eks-xr.yaml apis/composition.yaml examples/functions.yaml -r
+render: kcl $(CROSSPLANE_CLI) ${YQ}
+	@indir="./examples"; \
+	for file in $$(find $$indir -type f -name '*.yaml' ); do \
+	    doc_count=$$(grep -c '^---' "$$file"); \
+	    if [[ $$doc_count -gt 0 ]]; then \
+	        continue; \
+	    fi; \
+	    COMPOSITION=$$(${YQ} eval '.metadata.annotations."render.crossplane.io/composition-path"' $$file); \
+	    FUNCTION=$$(${YQ} eval '.metadata.annotations."render.crossplane.io/function-path"' $$file); \
+	    ENVIRONMENT=$$(${YQ} eval '.metadata.annotations."render.crossplane.io/environment-path"' $$file); \
+	    OBSERVE=$$(${YQ} eval '.metadata.annotations."render.crossplane.io/observe-path"' $$file); \
+	    if [[ "$$ENVIRONMENT" == "null" ]]; then \
+	        ENVIRONMENT=""; \
+	    fi; \
+	    if [[ "$$OBSERVE" == "null" ]]; then \
+	        OBSERVE=""; \
+	    fi; \
+	    if [[ "$$COMPOSITION" == "null" || "$$FUNCTION" == "null" ]]; then \
+	        continue; \
+	    fi; \
+	    ENVIRONMENT=$${ENVIRONMENT=="null" ? "" : $$ENVIRONMENT}; \
+	    OBSERVE=$${OBSERVE=="null" ? "" : $$OBSERVE}; \
+	    $(CROSSPLANE_CLI) beta render $$file $$COMPOSITION $$FUNCTION $${ENVIRONMENT:+-e $$ENVIRONMENT} $${OBSERVE:+-o $$OBSERVE} -x; \
+	done
 
 yamllint: ## Static yamllint check
 	@$(INFO) running yamllint
 	@yamllint ./apis || $(FAIL)
 	@$(OK) running yamllint
 
+kcllint: ## Static kcllint check
+	@$(INFO) running kcllint
+	@$(KCL) lint ./apis/kcl/ || $(FAIL)
+	@$(OK) running kcllint
+
 help.local:
 	@grep -E '^[a-zA-Z_-]+.*:.*?## .*$$' Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: uptest e2e render yamllint help.local
+.PHONY: uptest e2e render yamllint kcllint help.local
