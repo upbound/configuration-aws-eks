@@ -434,14 +434,14 @@ spec:
         apiVersion: cel.fn.crossplane.io/v1beta1
         kind: Filters
         filters:
-        - name: accessEntry
-          expression: |
-            "iam" in observed.composite.resource.spec.parameters &&
-            "principalArn" in observed.composite.resource.spec.parameters.iam
-        - name: accessPolicyAssociation
-          expression: |
-            "iam" in observed.composite.resource.spec.parameters &&
-            "principalArn" in observed.composite.resource.spec.parameters.iam
+          - name: accessEntry
+            expression: |
+              "iam" in observed.composite.resource.spec.parameters &&
+              "principalArn" in observed.composite.resource.spec.parameters.iam
+          - name: accessPolicyAssociation
+            expression: |
+              "iam" in observed.composite.resource.spec.parameters &&
+              "principalArn" in observed.composite.resource.spec.parameters.iam
 
     - step: sequence-creation
       functionRef:
