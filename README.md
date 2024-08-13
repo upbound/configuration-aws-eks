@@ -36,3 +36,18 @@ This repository serves as a foundational step. To enhance your control plane, co
 
 
 Upbound will automatically detect the commits you make in your repo and build the configuration package for you. To learn more about how to build APIs for your managed control planes in Upbound, read the guide on Upbound's docs.
+
+# Using the make file
+## render target
+### Overview
+make render target automates the rendering of Crossplane manifests using specified annotations within your YAML files.
+The annotations guide the rendering process, specifying paths to composition, function, environment, and observe files.
+
+### Annotations
+The make render target relies on specific annotations in your YAML files to determine how to process each file.
+The following annotations are supported:
+
+**render.crossplane.io/composition-path**: Specifies the path to the composition file to be used in rendering.
+**render.crossplane.io/function-path**: Specifies the path to the function file to be used in rendering.
+**render.crossplane.io/environment-path** (optional): Specifies the path to the environment file. If not provided, the rendering will proceed without an environment.
+**render.crossplane.io/observe-path** (optional): Specifies the path to the observe file. If not provided, the rendering will proceed without observation settings.
