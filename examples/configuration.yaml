@@ -3,4 +3,4 @@ kind: Configuration
 metadata:
   name: cofiguration-aws-eks
 spec:
-  package: xpkg.upbound.io/upbound/configuration-aws-eks:v0.1.0
+  package: xpkg.upbound.io/upbound/configuration-aws-eks:v0.12.0

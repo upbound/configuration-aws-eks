@@ -4,7 +4,7 @@ metadata:
   name: xeks.aws.platform.upbound.io
 spec:
   defaultCompositionRef:
-    name: xeks.aws.platform.upbound.io
+    name: pat.xeks.aws.platform.upbound.io
   connectionSecretKeys:
     - kubeconfig
   group: aws.platform.upbound.io
@@ -36,18 +36,9 @@ spec:
                       type: object
                       description: IAM configuration to connect as ClusterAdmin.
                       properties:
-                        roleArn:
-                          description: The IAM Role ARN to connect as ClusterAdmin.
+                        principalArn:
+                          description: The principal ARN to connect as ClusterAdmin.
                           type: string
-                          default: roleArn
-                        userArn:
-                          description: The IAM User ARN to connect as ClusterAdmin.
-                          type: string
-                          default: userArn
-                        autoscalerArn:
-                          description: The AutoScaler Role ARN to connect as ClusterAdmin.
-                          type: string
-                          default: autoscalerArn
                     deletionPolicy:
                       description: Delete the external resources when the Claim/XR is deleted. Defaults to Delete
                       enum:

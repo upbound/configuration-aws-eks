@@ -3,14 +3,14 @@ kind: Function
 metadata:
   name: crossplane-contrib-function-patch-and-transform
 spec:
-  package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.4.0
+  package: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform:v0.7.0
 ---
 apiVersion: pkg.crossplane.io/v1beta1
 kind: Function
 metadata:
   name: crossplane-contrib-function-kcl
 spec:
-  package: xpkg.upbound.io/crossplane-contrib/function-kcl:v0.5.1
+  package: xpkg.upbound.io/crossplane-contrib/function-kcl:v0.9.4
 ---
 apiVersion: pkg.crossplane.io/v1beta1
 kind: Function
@@ -25,4 +25,10 @@ metadata:
   name: crossplane-contrib-function-sequencer
 spec:
   package: xpkg.upbound.io/crossplane-contrib/function-sequencer:v0.1.2
-
+---
+apiVersion: pkg.crossplane.io/v1beta1
+kind: Function
+metadata:
+  name: crossplane-contrib-function-cel-filter
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/function-cel-filter:v0.1.1

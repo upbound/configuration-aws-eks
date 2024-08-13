@@ -2,6 +2,9 @@ apiVersion: aws.platform.upbound.io/v1alpha1
 kind: XEKS
 metadata:
   name: configuration-aws-eks-kcl
+  annotations:
+    render.crossplane.io/composition-path: apis/kcl/composition.yaml
+    render.crossplane.io/function-path: examples/functions.yaml
 spec:
   compositionSelector:
     matchLabels:
@@ -10,10 +13,6 @@ spec:
     id: configuration-aws-eks-kcl
     region: us-west-2
     version: "1.27"
-    iam:
-      # replace with your custom arn like:
-      # roleArn: arn:aws:iam::123456789:role/AWSReservedSSO_AdministratorAccess_d703c73ed340fde7
-      roleArn: ${data.aws_eks_iam_default_admin}
     nodes:
       count: 1
       instanceType: t3.small
