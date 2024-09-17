@@ -28,7 +28,7 @@ XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/upbound
 XPKGS = $(PROJECT_NAME)
 -include build/makelib/xpkg.mk
 
-CROSSPLANE_VERSION = 1.16.0-up.1
+CROSSPLANE_VERSION = 1.17.1-up.1
 CROSSPLANE_CHART_REPO = https://charts.upbound.io/stable
 CROSSPLANE_CHART_NAME = universal-crossplane
 CROSSPLANE_NAMESPACE = upbound-system
