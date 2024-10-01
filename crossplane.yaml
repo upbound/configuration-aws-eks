@@ -17,7 +17,7 @@ spec:
   dependsOn:
     - configuration: xpkg.upbound.io/upbound/configuration-aws-network
       # renovate: datasource=github-releases depName=upbound/configuration-aws-network
-      version: "v0.17.0"
+      version: "v0.18.0"
     - provider: xpkg.upbound.io/crossplane-contrib/provider-helm
       # renovate: datasource=github-releases depName=crossplane-contrib/provider-helm
       version: "v0.19.0"
