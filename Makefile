@@ -1,5 +1,64 @@
+# Usage
+# ====================================================================================
+# Generic Makefile to be used across repositories building a crossplane configuration
+# package
+#
+# Available targets:
+#
+# - `yamllint`
+#   Runs yamllint for all files in `api`-folder recursively
+#
+# - `render`
+#   Runs crossplane render to render the output of the composition. Usefule for quick
+#   feedback in order to test templating.
+#   Important note:
+#		Claims need following annotations in order for render to work (adjust the paths
+#		if necessary):
+#			render.crossplane.io/composition-path: apis/pat/composition.yaml
+#			render.crossplane.io/function-path: examples/functions.yaml
+#		This will only populate the cache. Use `render.show` to use the output
+#
+# - `render.show`
+#   Outputs the rendered yaml, useful for validating the rendered output manually
+#   or together with 'crossplane validate', e.g.:
+#   	`make render.show | crossplane beta validate crossplane.yaml -`
+#
+# - `render.test`
+#   Executes kcl-unit tests on rendered manifests. Tests live in `test`-folder and
+#   can be written as normal kcl-tests
+#
+# - `e2e`
+#   Runs full end-to-end test, including creating cluster, setting up the configuration
+#   and testing if create, import and delete work as expected.
+#   In case the configuration creates resources on a cloud provider, it requires the following
+#   environment variables to be set:
+#   UPTEST_CLOUD_CREDENTIALS, cloud credentials for the provider being tested, e.g.
+#   	- for aws: `export UPTEST_CLOUD_CREDENTIALS=$(cat ~/.aws/credentials)`
+#   	- for gcp: `export UPTEST_CLOUD_CREDENTIALS=$(cat gcp-sa.json)`
+#   	- for azure: `export UPTEST_CLOUD_CREDENTIALS=$(cat azure.json)`
+#
+#	Available options:
+#		UPTEST_SKIP_DELETE (default `false`) skips the deletion of any resources created during the test
+#		UPTEST_SKIP_UPDATE (default `false`) skips testing the update of the claims
+#		UPTEST_SKIP_IMPORT (default `true`) skips testing the import of resources
+#	Example:
+#		`make e2e UPTEST_SKIP_DELETE=true`
+#
+# Language specific options:
+#
+# - `KCL`
+#      KCL_COMPOSITION_PATH can be set to the kcl-file creating composition.yaml. Default: `apis/kcl/generate.k`
+
 # Project Setup
-PROJECT_NAME := configuration-aws-eks
+# ====================================================================================
+
+# Include project.mk for project specific settings
+include project.mk
+
+ifndef PROJECT_NAME
+  $(error PROJECT_NAME is not set. Please create `project.mk` and set it there.)
+endif
+
 PROJECT_REPO := github.com/upbound/$(PROJECT_NAME)
 
 # NOTE(hasheddan): the platform is insignificant here as Configuration package
@@ -11,16 +70,15 @@ PLATFORMS ?= linux_amd64
 # ====================================================================================
 # Setup Kubernetes tools
 
-UP_VERSION = v0.32.1
+UP_VERSION = v0.34.0
 UP_CHANNEL = stable
-UPTEST_VERSION = v0.11.1
-CROSSPLANE_CLI_VERSION=v1.16.0
+CROSSPLANE_CLI_VERSION = v1.17.1
 
 -include build/makelib/k8s_tools.mk
 # ====================================================================================
 # Setup XPKG
 XPKG_DIR = $(shell pwd)
-XPKG_IGNORE = .github/workflows/*.yaml,.github/workflows/*.yml,examples/*.yaml,.work/uptest-datasource.yaml
+XPKG_IGNORE = .github/workflows/*.yaml,.github/workflows/*.yml,examples/*.yaml,.work/uptest-datasource.yaml,.cache/render/*
 XPKG_REG_ORGS ?= xpkg.upbound.io/upbound
 # NOTE(hasheddan): skip promoting on xpkg.upbound.io as channel tags are
 # inferred.
@@ -28,14 +86,24 @@ XPKG_REG_ORGS_NO_PROMOTE ?= xpkg.upbound.io/upbound
 XPKGS = $(PROJECT_NAME)
 -include build/makelib/xpkg.mk
 
-CROSSPLANE_VERSION = 1.16.0-up.1
+CROSSPLANE_VERSION = v1.17.1-up.1
 CROSSPLANE_CHART_REPO = https://charts.upbound.io/stable
 CROSSPLANE_CHART_NAME = universal-crossplane
 CROSSPLANE_NAMESPACE = upbound-system
 CROSSPLANE_ARGS = "--enable-usages"
-KIND_CLUSTER_NAME = uptest-$(PROJECT_NAME)
+KIND_CLUSTER_NAME ?= uptest-$(PROJECT_NAME)
+
 -include build/makelib/local.xpkg.mk
 -include build/makelib/controlplane.mk
+
+# ====================================================================================
+# Testing
+
+UPTEST_VERSION = v1.1.2
+UPTEST_LOCAL_DEPLOY_TARGET = local.xpkg.deploy.configuration.$(PROJECT_NAME)
+UPTEST_DEFAULT_TIMEOUT = 2400s
+
+-include build/makelib/uptest.mk
 
 # ====================================================================================
 # Targets
@@ -57,66 +125,58 @@ submodules: ## Update the submodules, such as the common build scripts.
 
 # We must ensure up is installed in tool cache prior to build as including the k8s_tools machinery prior to the xpkg
 # machinery sets UP to point to tool cache.
-build.init: $(UP) kcl
+build.init: $(UP)
 
-# ====================================================================================
-# End to End Testing
-
-# This target requires the following environment variables to be set:
-# - UPTEST_CLOUD_CREDENTIALS, cloud credentials for the provider being tested, e.g. export UPTEST_CLOUD_CREDENTIALS=$(cat ~/.aws/credentials)
-# - To ensure the proper functioning of the end-to-end test resource pre-deletion hook, it is crucial to arrange your resources appropriately.
-#   You can check the basic implementation here: https://github.com/upbound/uptest/blob/main/internal/templates/01-delete.yaml.tmpl.
-# - UPTEST_DATASOURCE_PATH (optional), see https://github.com/upbound/uptest#injecting-dynamic-values-and-datasource
-SKIP_DELETE ?=
-uptest: $(UPTEST) $(KUBECTL) $(KUTTL)
-	@$(INFO) running automated tests
-	@KUBECTL=$(KUBECTL) KUTTL=$(KUTTL) CROSSPLANE_NAMESPACE=$(CROSSPLANE_NAMESPACE) CROSSPLANE_CLI=$(CROSSPLANE_CLI) $(UPTEST) e2e "${UPTEST_EXAMPLE_LIST}" --data-source="${UPTEST_DATASOURCE_PATH}" --setup-script=test/setup.sh --default-timeout=2400 $(SKIP_DELETE) || $(FAIL)
-	@$(OK) running automated tests
-
-# This target requires the following environment variables to be set:
-# - UPTEST_CLOUD_CREDENTIALS, cloud credentials for the provider being tested, e.g. export UPTEST_CLOUD_CREDENTIALS=$(cat ~/.aws/credentials)
-# Use `make e2e SKIP_DELETE=--skip-delete` to skip deletion of resources created during the test.
-e2e: build controlplane.up local.xpkg.deploy.configuration.$(PROJECT_NAME) uptest  ## Run uptest together with all dependencies. Use `make e2e SKIP_DELETE=--skip-delete` to skip deletion of resources.
-
+# In case of building a composition with kcl, we must first render the composition-file
+KCL_COMPOSITION_PATH ?= apis/kcl/generate.k
+LANG_KCL := $(shell find ./apis -type f -name '*.k')
+ifdef LANG_KCL
 kcl: $(KCL) ## Generate KCL-based Composition
-	$(KCL) apis/kcl/generate.k
+	@$(INFO) Generating kcl composition
+	@$(KCL) $(KCL_COMPOSITION_PATH) 1>/dev/null
+	@$(OK) Generated kcl composition
 
-render: kcl $(CROSSPLANE_CLI) ${YQ}
-	@indir="./examples"; \
-	for file in $$(find $$indir -type f -name '*.yaml' ); do \
-	    doc_count=$$(grep -c '^---' "$$file"); \
-	    if [[ $$doc_count -gt 0 ]]; then \
-	        continue; \
-	    fi; \
-	    COMPOSITION=$$(${YQ} eval '.metadata.annotations."render.crossplane.io/composition-path"' $$file); \
-	    FUNCTION=$$(${YQ} eval '.metadata.annotations."render.crossplane.io/function-path"' $$file); \
-	    ENVIRONMENT=$$(${YQ} eval '.metadata.annotations."render.crossplane.io/environment-path"' $$file); \
-	    OBSERVE=$$(${YQ} eval '.metadata.annotations."render.crossplane.io/observe-path"' $$file); \
-	    if [[ "$$ENVIRONMENT" == "null" ]]; then \
-	        ENVIRONMENT=""; \
-	    fi; \
-	    if [[ "$$OBSERVE" == "null" ]]; then \
-	        OBSERVE=""; \
-	    fi; \
-	    if [[ "$$COMPOSITION" == "null" || "$$FUNCTION" == "null" ]]; then \
-	        continue; \
-	    fi; \
-	    ENVIRONMENT=$${ENVIRONMENT=="null" ? "" : $$ENVIRONMENT}; \
-	    OBSERVE=$${OBSERVE=="null" ? "" : $$OBSERVE}; \
-	    $(CROSSPLANE_CLI) beta render $$file $$COMPOSITION $$FUNCTION $${ENVIRONMENT:+-e $$ENVIRONMENT} $${OBSERVE:+-o $$OBSERVE} -x; \
-	done
+render: kcl
+build.init: kcl
+.PHONY: kcl
+endif
 
-yamllint: ## Static yamllint check
-	@$(INFO) running yamllint
-	@yamllint ./apis || $(FAIL)
-	@$(OK) running yamllint
+render.test: $(CROSSPLANE_CLI) $(KCL) render
+	@echo find .cache/render -depth 1 -type f -name '*.yaml'
+	@for RENDERED_COMPOSITION in $$(find .cache/render -maxdepth 1 -type f -name '*.yaml'); do \
+		$(INFO) "Testing $${RENDERED_COMPOSITION}"; \
+		export RENDERED_COMPOSITION; \
+		$(KCL) test test/ && \
+		$(OK) "Success testing \"$${RENDERED_COMPOSITION}\"!" || \
+		($(ERR) "Failure testing \"$${RENDERED_COMPOSITION}\"!" && exit 1); \
+	done; \
 
-kcllint: ## Static kcllint check
-	@$(INFO) running kcllint
-	@$(KCL) lint ./apis/kcl/ || $(FAIL)
-	@$(OK) running kcllint
+.PHONY: check-examples
+check-examples: ## Check examples for sanity
+	@$(INFO) Checking if package versions in dependencies match examples
+	@FN_EXAMPLES=$$( \
+		find examples -type f -name "*.yaml" | \
+		xargs $(YQ) -r -o=json 'select(.kind == "Function" and (.apiVersion | test("^pkg.crossplane.io/"))) | .spec.package' | \
+		sort -u); \
+	FN_DEPS=$$( \
+		$(YQ) '.spec.dependsOn[] | select(.function != null) | (.function + ":" + .version)' crossplane.yaml | \
+		sort -u \
+	); \
+	if [ "$$FN_EXAMPLES" != "$$FN_DEPS" ]; then \
+		echo "Function package versions in examples and in crossplane.yaml don't match!"; \
+		echo "" ; \
+		echo "Versions in dependencies:"; \
+		echo "---" ; \
+		echo "$$FN_DEPS"; \
+		echo "" ; \
+		echo "Versions in examples:"; \
+		echo "---" ; \
+		echo "$$FN_EXAMPLES"; \
+		exit 1; \
+	fi;
+	@$(OK) Package versions are sane
 
 help.local:
 	@grep -E '^[a-zA-Z_-]+.*:.*?## .*$$' Makefile | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-.PHONY: uptest e2e render yamllint kcllint help.local
+.PHONY: uptest e2e render yamllint help.local
