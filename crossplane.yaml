@@ -18,11 +18,11 @@ spec:
     - configuration: xpkg.upbound.io/upbound/configuration-aws-network
       # renovate: datasource=github-releases depName=upbound/configuration-aws-network
       version: "v0.19.0"
-    - provider: xpkg.upbound.io/crossplane-contrib/provider-helm
-      # renovate: datasource=github-releases depName=crossplane-contrib/provider-helm
+    - provider: xpkg.upbound.io/upbound/provider-helm
+      # renovate: datasource=github-releases depName=upbound/provider-helm
       version: "v0.20.0"
-    - provider: xpkg.upbound.io/crossplane-contrib/provider-kubernetes
-      # renovate: datasource=github-releases depName=crossplane-contrib/provider-kubernetes
+    - provider: xpkg.upbound.io/upbound/provider-kubernetes
+      # renovate: datasource=github-releases depName=upbound/provider-kubernetes
       version: "v0.16.0"
     - provider: xpkg.upbound.io/upbound/provider-aws-ec2
       # renovate: datasource=github-releases depName=upbound/provider-aws
