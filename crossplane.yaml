@@ -17,7 +17,7 @@ spec:
   dependsOn:
     - configuration: xpkg.upbound.io/upbound/configuration-aws-network
       # renovate: datasource=github-releases depName=upbound/configuration-aws-network
-      version: "v0.20.0"
+      version: "v0.21.0"
     - provider: xpkg.upbound.io/upbound/provider-helm
       # renovate: datasource=github-releases depName=upbound/provider-helm
       version: "v0.20.0"
@@ -26,19 +26,19 @@ spec:
       version: "v0.16.0"
     - provider: xpkg.upbound.io/upbound/provider-aws-ec2
       # renovate: datasource=github-releases depName=upbound/provider-aws
-      version: "v1.18.0"
+      version: "v1.19.0"
     - provider: xpkg.upbound.io/upbound/provider-aws-eks
       # renovate: datasource=github-releases depName=upbound/provider-aws
-      version: "v1.18.0"
+      version: "v1.19.0"
     - provider: xpkg.upbound.io/upbound/provider-aws-iam
       # renovate: datasource=github-releases depName=upbound/provider-aws
-      version: "v1.18.0"
+      version: "v1.19.0"
     - function: xpkg.upbound.io/crossplane-contrib/function-patch-and-transform
       # renovate: datasource=github-releases depName=crossplane-contrib/function-patch-and-transform
       version: "v0.8.0"
     - function: xpkg.upbound.io/crossplane-contrib/function-kcl
       # renovate: datasource=github-releases depName=crossplane-contrib/function-kcl
-      version: "v0.10.9"
+      version: "v0.11.0"
     - function: xpkg.upbound.io/crossplane-contrib/function-auto-ready
       # renovate: datasource=github-releases depName=crossplane-contrib/function-auto-ready
       version: "v0.4.0"
