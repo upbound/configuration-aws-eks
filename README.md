@@ -1,68 +1,40 @@
 # AWS EKS Configuration
 
-This repository contains a [Crossplane configuration](https://docs.crossplane.io/latest/concepts/packages/#configuration-packages), tailored for users establishing their initial control plane with [Upbound](https://cloud.upbound.io). This configuration deploys fully managed [Amazon Elastic Kubernetes Service (EKS)](https://aws.amazon.com/eks/) instances, leveraging the robust capabilities of the [Upbound Official AWS Provider](https://marketplace.upbound.io/providers/upbound/provider-family-aws).
+This repository contains an Upbound project, tailored for users establishing their initial control plane with [Upbound](https://cloud.upbound.io). This configuration deploys fully managed [Amazon Elastic Kubernetes Service (EKS)](https://aws.amazon.com/eks/) instances.
 
 ## Overview
 
-The core components of a custom API in [Crossplane](https://docs.crossplane.io/latest/getting-started/introduction/) include:
+The core components of a custom API in [Upbound Project](https://docs.upbound.io/learn/control-plane-project/) include:
 
 - **CompositeResourceDefinition (XRD):** Defines the API's structure.
-- **Composition(s):** Implements the API by orchestrating a set of Crossplane managed resources.
+- **Composition(s):** Configures the Functions Pipeline
+- **Embedded Function(s):** Encapsulates the Composition logic and implementation within a self-contained, reusable unit
 
-In this configuration, the EKS API contains:
+In this specific configuration, the API contains:
 
-- **an [EKS](/apis/definition.yaml) custom resource type.**
-- **Composition of the EKS resources:** Configured in [/apis/composition.yaml](/apis/composition.yaml), it provisions an EKS cluster and fundamental security and networking resources in the `upbound-system` namespace.
+- **an [AWS EKS](/apis/definition.yaml) custom resource type.**
+- **Composition:** Configured in [/apis/composition.yaml](/apis/composition.yaml)
+- **Embedded Function:** The Composition logic is encapsulated within [embedded function](/functions/xeks/main.k)
 
 ## Deployment
 
-To deploy this configuration into a new Crossplane installation, use the `--set configuration.packages` flag in your `helm install` command.
+- Execute `up project run`
+- Alternatively, install the Configuration from the [Upbound Marketplace](https://marketplace.upbound.io/configurations/upbound/configuration-aws-eks)
+- Check [examples](/examples/) for example XR(Composite Resource)
 
-```shell
-apiVersion: pkg.crossplane.io/v1
-kind: Configuration
-metadata:
-  name: configuration-aws-eks
-spec:
-  package: xpkg.upbound.io/upbound/configuration-aws-eks:v0.12.0
-```
+## Testing
+
+The configuration can be tested using:
+
+- `up composition render --xrd=apis/definition.yaml apis/composition.yaml examples/eks-xr.yaml` to render the composition
+- `up test run tests/*` to run composition tests in `tests/test-xeks/`
+- `up test run tests/* --e2e` to run end-to-end tests in `tests/e2etest-xeks/`
 
 ## Next steps
 
-This repository serves as a foundational step. To enhance your control plane, consider:
+This repository serves as a foundational step. To enhance your configuration, consider:
 
 1. create new API definitions in this same repo
 2. editing the existing API definition to your needs
 
-
-Upbound will automatically detect the commits you make in your repo and build the configuration package for you. To learn more about how to build APIs for your managed control planes in Upbound, read the guide on Upbound's docs.
-
-# Using the make file
-## render target
-### Overview
-`make render` target automates the rendering of Crossplane manifests using specified annotations within your YAML files.
-The annotations guide the rendering process, specifying paths to composition, function, environment, and observe files.
-
-### Annotations
-The `make render` target relies on specific annotations in your YAML files to determine how to process each file.
-The following annotations are supported:
-
-**render.crossplane.io/composition-path**: Specifies the path to the composition file to be used in rendering.
-
-**render.crossplane.io/function-path**: Specifies the path to the function file to be used in rendering.
-
-**render.crossplane.io/environment-path** (optional): Specifies the path to the environment file. If not provided, the rendering will proceed without an environment.
-
-**render.crossplane.io/observe-path** (optional): Specifies the path to the observe file. If not provided, the rendering will proceed without observation settings.
-
-```yaml
-apiVersion: aws.platform.upbound.io/v1alpha1
-kind: XEKS
-metadata:
-  name: configuration-aws-eks
-  annotations:
-    render.crossplane.io/composition-path: apis/pat/composition.yaml
-    render.crossplane.io/function-path: examples/functions.yaml
-spec:
-  parameters:{}
-```
+To learn more about how to build APIs for your managed control planes in Upbound, read the guide on [Upbound's docs](https://docs.upbound.io/).

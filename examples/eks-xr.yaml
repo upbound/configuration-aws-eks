@@ -2,16 +2,13 @@ apiVersion: aws.platform.upbound.io/v1alpha1
 kind: XEKS
 metadata:
   name: configuration-aws-eks
-  annotations:
-    render.crossplane.io/composition-path: apis/pat/composition.yaml
-    render.crossplane.io/function-path: examples/functions.yaml
 spec:
   parameters:
     id: configuration-aws-eks
     region: us-west-2
     version: "1.27"
     nodes:
-      count: 3
+      count: 1
       instanceType: t3.small
   writeConnectionSecretToRef:
     name: configuration-aws-eks-kubeconfig

@@ -1,8 +1,0 @@
-apiVersion: aws.platform.upbound.io/v1alpha1
-kind: XNetwork
-metadata:
-  name: configuration-aws-eks-kcl
-spec:
-  parameters:
-    id: configuration-aws-eks-kcl
-    region: us-west-2
