@@ -10,7 +10,7 @@ kind: Function
 metadata:
   name: crossplane-contrib-function-kcl
 spec:
-  package: xpkg.upbound.io/crossplane-contrib/function-kcl:v0.11.2
+  package: xpkg.upbound.io/crossplane-contrib/function-kcl:v0.11.4
 ---
 apiVersion: pkg.crossplane.io/v1beta1
 kind: Function
@@ -24,7 +24,7 @@ kind: Function
 metadata:
   name: crossplane-contrib-function-sequencer
 spec:
-  package: xpkg.upbound.io/crossplane-contrib/function-sequencer:v0.2.2
+  package: xpkg.upbound.io/crossplane-contrib/function-sequencer:v0.2.3
 ---
 apiVersion: pkg.crossplane.io/v1beta1
 kind: Function
