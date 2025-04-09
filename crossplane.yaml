@@ -17,7 +17,7 @@ spec:
   dependsOn:
     - configuration: xpkg.upbound.io/upbound/configuration-aws-network
       # renovate: datasource=github-releases depName=upbound/configuration-aws-network
-      version: "v0.23.0"
+      version: "v0.24.0"
     - provider: xpkg.upbound.io/upbound/provider-helm
       version: "v0"
     - provider: xpkg.upbound.io/upbound/provider-kubernetes
@@ -31,13 +31,13 @@ spec:
       version: "v0.8.2"
     - function: xpkg.upbound.io/crossplane-contrib/function-kcl
       # renovate: datasource=github-releases depName=crossplane-contrib/function-kcl
-      version: "v0.11.2"
+      version: "v0.11.4"
     - function: xpkg.upbound.io/crossplane-contrib/function-auto-ready
       # renovate: datasource=github-releases depName=crossplane-contrib/function-auto-ready
       version: "v0.4.2"
     - function: xpkg.upbound.io/crossplane-contrib/function-sequencer
       # renovate: datasource=github-releases depName=crossplane-contrib/function-sequencer
-      version: "v0.2.2"
+      version: "v0.2.3"
     - function: xpkg.upbound.io/crossplane-contrib/function-cel-filter
       # renovate: datasource=github-releases depName=crossplane-contrib/function-cel-filter
       version: "v0.1.1"
