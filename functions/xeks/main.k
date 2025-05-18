@@ -3,11 +3,14 @@ import models.io.upbound.aws.eks.v1beta1 as eksv1beta1
 import models.io.upbound.aws.eks.v1beta2 as eksv1beta2
 import models.io.upbound.aws.iam.v1beta1 as iamv1beta1
 
-xrName = option("params")?.oxr?.metadata.name
-region = option("params")?.oxr?.spec.parameters.region or ""
-id = option("params")?.oxr?.spec.parameters.id or ""
-kubernetesVersion = option("params")?.oxr?.spec.parameters.version or ""
-uid = option("params")?.oxr?.metadata.uid or ""
+oxr = option("params").oxr
+
+xrName = oxr.metadata.name
+region = oxr.spec.parameters.region or ""
+id = oxr.spec.parameters.id or ""
+kubernetesVersion = oxr.spec.parameters.version or ""
+uid = oxr.metadata.uid or ""
+accessConfig = oxr.spec.parameters.accessConfig
 
 _metadata = lambda name: str -> any {
     {
@@ -16,8 +19,8 @@ _metadata = lambda name: str -> any {
 }
 
 _defaults = {
-    deletionPolicy = option("params")?.oxr?.spec.parameters.deletionPolicy or "Delete"
-    providerConfigRef.name = option("params")?.oxr?.spec.parameters.providerConfigName or "default"
+    deletionPolicy = oxr.spec.parameters.deletionPolicy or "Delete"
+    providerConfigRef.name = oxr.spec.parameters.providerConfigName or "default"
 }
 
 _items = []
@@ -61,6 +64,10 @@ _items += [
             forProvider = {
                 region = region
                 version = kubernetesVersion
+                accessConfig = {
+                    authenticationMode = oxr.spec.parameters.accessConfig.authenticationMode
+                    bootstrapClusterCreatorAdminPermissions = oxr.spec.parameters.accessConfig.bootstrapClusterCreatorAdminPermissions
+                }
                 roleArnSelector = {
                     matchControllerRef = True
                     matchLabels = {
@@ -100,7 +107,7 @@ if clusterSecurityGroupId:
         }
     ]
 
-connectionSecretNamespace = option("params")?.oxr?.spec.writeConnectionSecretToRef.namespace or "upbound-system"
+connectionSecretNamespace = oxr.spec.writeConnectionSecretToRef.namespace or "upbound-system"
 _items += [
     eksv1beta1.ClusterAuth{
         metadata = _metadata("kubeClusterAuth") # doesn't work with `kubernetesClusterAuth` or `kubernetesClusterAuthXXX` ???
@@ -155,8 +162,8 @@ _items += [
     }
 ]
 
-nodeCount = option("params")?.oxr?.spec.parameters.nodes.count or ""
-instanceType = option("params")?.oxr?.spec.parameters.nodes.instanceType or ""
+nodeCount = oxr.spec.parameters.nodes.count or ""
+instanceType = oxr.spec.parameters.nodes.instanceType or ""
 
 _items += [
     eksv1beta2.NodeGroup{
@@ -190,7 +197,7 @@ _items += [
     }
 ]
 
-principalArn = option("params")?.oxr?.spec?.parameters?.iam?.principalArn or False
+principalArn = oxr.spec?.parameters?.iam?.principalArn or False
 
 if principalArn:
     _items += [

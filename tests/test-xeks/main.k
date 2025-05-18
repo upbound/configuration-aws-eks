@@ -43,16 +43,6 @@ _items = [
                             "crossplane.io/composite" = "configuration-aws-eks"
                             role = "controlplane"
                         }
-                        ownerReferences = [
-                            {
-                                apiVersion = "aws.platform.upbound.io/v1alpha1"
-                                blockOwnerDeletion = True
-                                controller = True
-                                kind = "XEKS"
-                                name = "configuration-aws-eks"
-                                uid = ""
-                            }
-                        ]
                     }
                     spec = {
                         deletionPolicy = "Delete"
@@ -93,21 +83,14 @@ _items = [
                         labels = {
                             "crossplane.io/composite" = "configuration-aws-eks"
                         }
-                        ownerReferences = [
-                            {
-                                apiVersion = "aws.platform.upbound.io/v1alpha1"
-                                blockOwnerDeletion = True
-                                controller = True
-                                kind = "XEKS"
-                                name = "configuration-aws-eks"
-                                uid = ""
-                            }
-                        ]
                     }
                     spec = {
                         deletionPolicy = "Delete"
                         forProvider = {
                             region = "us-west-2"
+                            accessConfig = {
+                              authenticationMode = "API_AND_CONFIG_MAP"
+                            }
                             roleArnSelector = {
                                 matchControllerRef = True
                                 matchLabels = {
@@ -140,16 +123,6 @@ _items = [
                             "crossplane.io/composite" = "configuration-aws-eks"
                             role = "nodegroup"
                         }
-                        ownerReferences = [
-                            {
-                                apiVersion = "aws.platform.upbound.io/v1alpha1"
-                                blockOwnerDeletion = True
-                                controller = True
-                                kind = "XEKS"
-                                name = "configuration-aws-eks"
-                                uid = ""
-                            }
-                        ]
                     }
                     spec = {
                         deletionPolicy = "Delete"
@@ -194,16 +167,6 @@ _items = [
                             "crossplane.io/composite" = "configuration-aws-eks"
                         }
                         name = "configuration-aws-eks"
-                        ownerReferences = [
-                            {
-                                apiVersion = "aws.platform.upbound.io/v1alpha1"
-                                blockOwnerDeletion = True
-                                controller = True
-                                kind = "XEKS"
-                                name = "configuration-aws-eks"
-                                uid = ""
-                            }
-                        ]
                     }
                     spec = {
                         credentials = {
@@ -226,16 +189,6 @@ _items = [
                             "crossplane.io/composite" = "configuration-aws-eks"
                         }
                         name = "configuration-aws-eks"
-                        ownerReferences = [
-                            {
-                                apiVersion = "aws.platform.upbound.io/v1alpha1"
-                                blockOwnerDeletion = True
-                                controller = True
-                                kind = "XEKS"
-                                name = "configuration-aws-eks"
-                                uid = ""
-                            }
-                        ]
                     }
                     spec = {
                         credentials = {
@@ -257,16 +210,6 @@ _items = [
                         labels = {
                             "crossplane.io/composite" = "configuration-aws-eks"
                         }
-                        ownerReferences = [
-                            {
-                                apiVersion = "aws.platform.upbound.io/v1alpha1"
-                                blockOwnerDeletion = True
-                                controller = True
-                                kind = "XEKS"
-                                name = "configuration-aws-eks"
-                                uid = ""
-                            }
-                        ]
                     }
                     spec = {
                         deletionPolicy = "Delete"
