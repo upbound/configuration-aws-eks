@@ -30,6 +30,20 @@ spec:
                     region:
                       type: string
                       description: Region is the region you'd like your resource to be created in.
+                    accessConfig:
+                      type: object
+                      properties:
+                        bootstrapClusterCreatorAdminPermissions:
+                          type: boolean
+                          description: Whether or not to bootstrap the access config values to the cluster. Default is false.
+                          default: false
+                        authenticationMode:
+                          type: string
+                          default: CONFIG_MAP
+                          enum:
+                            - CONFIG_MAP
+                            - API
+                            - API_AND_CONFIG_MAP
                     iam:
                       type: object
                       description: IAM configuration to connect as ClusterAdmin.
