@@ -9,9 +9,6 @@ spec:
   mode: Pipeline
   pipeline:
   - functionRef:
-      name: upbound-configuration-aws-eksxeks
-    step: xeks
-  - functionRef:
       name: crossplane-contrib-function-sequencer
     input:
       apiVersion: sequencer.fn.crossplane.io/v1beta1
@@ -29,6 +26,9 @@ spec:
         - nodeGroupPublic
         - eks-pod-identity-agent-addon
     step: sequence-creation
+  - functionRef:
+      name: upbound-configuration-aws-eksxeks
+    step: xeks
   - functionRef:
       name: crossplane-contrib-function-auto-ready
     step: crossplane-contrib-function-auto-ready

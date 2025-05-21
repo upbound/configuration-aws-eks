@@ -13,9 +13,7 @@ uid = oxr.metadata.uid or ""
 accessConfig = oxr.spec.parameters.accessConfig
 
 _metadata = lambda name: str -> any {
-    {
-        annotations = {"krm.kcl.dev/composition-resource-name" = name}
-    }
+    { annotations = { "krm.kcl.dev/composition-resource-name" = name }}
 }
 
 _defaults = {
@@ -110,7 +108,7 @@ if clusterSecurityGroupId:
 connectionSecretNamespace = oxr.spec.writeConnectionSecretToRef.namespace or "upbound-system"
 _items += [
     eksv1beta1.ClusterAuth{
-        metadata = _metadata("kubeClusterAuth") # doesn't work with `kubernetesClusterAuth` or `kubernetesClusterAuthXXX` ???
+        metadata = _metadata("kubernetesClusterAuth")
         spec: _defaults | {
             forProvider = {
                 region = region
@@ -210,15 +208,10 @@ if principalArn:
                         matchControllerRef = True
                     }
                     type = "STANDARD"
-                    if principalArn:
-                        principalArn = principalArn
+                    principalArn = principalArn
                 }
             }
         }
-    ]
-
-if principalArn:
-    _items += [
         eksv1beta1.AccessPolicyAssociation{
             apiVersion: "eks.aws.upbound.io/v1beta1"
             kind: "AccessPolicyAssociation"
