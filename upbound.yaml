@@ -18,9 +18,6 @@ spec:
     - function: xpkg.upbound.io/crossplane-contrib/function-auto-ready
       # renovate: datasource=github-releases depName=crossplane-contrib/function-auto-ready
       version: ">=v0.0.0"
-    - function: xpkg.upbound.io/crossplane-contrib/function-sequencer
-      # renovate: datasource=github-releases depName=crossplane-contrib/function-sequencer
-      version: "v0.2.2"
   license: Apache-2.0
   maintainer: Upbound <support@upbound.io>
   description: AWS EKS Configuration is reusable Configuration designed to be primarily used in higher level Configurations.
