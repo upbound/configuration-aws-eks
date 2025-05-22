@@ -4,7 +4,6 @@
     resources and verifies their "Ready" condition before proceeding to the next.
 
     The resource creation flow is validated in the following order:
-    check apis/composition.yaml
 
     Sequence 0:
     - kubernetesCluster

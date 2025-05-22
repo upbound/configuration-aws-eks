@@ -9,24 +9,6 @@ spec:
   mode: Pipeline
   pipeline:
   - functionRef:
-      name: crossplane-contrib-function-sequencer
-    input:
-      apiVersion: sequencer.fn.crossplane.io/v1beta1
-      kind: Input
-      rules:
-      - sequence:
-        - kubernetesCluster
-        - kubernetesClusterAuth
-        - vpc-cni-addon
-        - nodeGroupPublic
-      - sequence:
-        - nodeGroupPublic
-        - aws-ebs-csi-driver-addon
-      - sequence:
-        - nodeGroupPublic
-        - eks-pod-identity-agent-addon
-    step: sequence-creation
-  - functionRef:
       name: upbound-configuration-aws-eksxeks
     step: xeks
   - functionRef:
