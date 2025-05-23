@@ -43,7 +43,7 @@ spec:
                             - API
                             - API_AND_CONFIG_MAP
                       default:
-                        bootstrapClusterCreatorAdminPermissions: false
+                        bootstrapClusterCreatorAdminPermissions: true
                         authenticationMode: CONFIG_MAP
                     iam:
                       type: object
