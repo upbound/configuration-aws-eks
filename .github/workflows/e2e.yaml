@@ -23,6 +23,8 @@ jobs:
       - name: Checkout
         id: checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Install and login with up
         if: env.UP_API_TOKEN != '' && env.UP_ORG != ''
@@ -46,5 +48,4 @@ jobs:
         run: up ctx ${{ env.UP_ORG }}/upbound-gcp-us-central-1/${{ env.UP_GROUP }}
 
       - name: Run e2e tests
-        if: env.UP_API_TOKEN != '' && env.UP_ORG != ''
         run: up test run tests/* --e2e
