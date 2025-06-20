@@ -289,6 +289,7 @@ if ready(get(ocds, "nodeGroupPublic", "")) or exists("aws-ebs-csi-driver-addon")
                     region = region
                     addonName = "aws-ebs-csi-driver"
                     clusterNameSelector.matchControllerRef = True
+                    configurationValues = '{"defaultStorageClass": {"enabled": true}}'
                 }
             }
         }

@@ -13,7 +13,6 @@ _items = [
                         parameters: {
                             id: "configuration-aws-eks"
                             region: "us-west-2"
-                            version: "1.27"
                             nodes: {
                                 count: 1
                                 instanceType: "t3.small"
@@ -101,7 +100,6 @@ _items = [
                     parameters: {
                         id: "configuration-aws-eks"
                         region: "us-west-2"
-                        version: "1.27"
                         nodes: {
                             count: 1
                             instanceType: "t3.small"

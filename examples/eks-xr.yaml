@@ -6,7 +6,6 @@ spec:
   parameters:
     id: configuration-aws-eks
     region: us-west-2
-    version: "1.27"
     accessConfig:
       authenticationMode: API_AND_CONFIG_MAP
       bootstrapClusterCreatorAdminPermissions: true
