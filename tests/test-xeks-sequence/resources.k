@@ -28,7 +28,6 @@ _kubernetesCluster = eksv1beta2.Cluster {
                     role = "controlplane"
                 }
             }
-            version = "1.27"
             vpcConfig = {
                 endpointPrivateAccess = True
                 subnetIdSelector = {
@@ -57,7 +56,6 @@ _xr = platformawsv1alpha1.XEKS {
                 instanceType = "t3.small"
             }
             region = "us-west-2"
-            version = "1.27"
         }
         writeConnectionSecretToRef = {
             name = "configuration-aws-eks-kubeconfig"
