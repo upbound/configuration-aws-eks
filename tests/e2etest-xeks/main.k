@@ -18,7 +18,6 @@ _items = [
                         parameters = {
                             id = "configuration-aws-eks"
                             region = "us-west-2"
-                            version = "1.27"
                             accessConfig: {
                                 authenticationMode: "CONFIG_MAP"
                                 bootstrapClusterCreatorAdminPermissions: True
