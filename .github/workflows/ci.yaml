@@ -40,7 +40,7 @@ jobs:
 
       - name: Build and Push Upbound project
         if: env.UP_API_TOKEN != ''
-        uses: upbound/action-up-project@87016022642d4076f1360639bdf0f04527c28983 # v1
+        uses: upbound/action-up-project@b849ec1eb303ae4abf22b2b86c0e2afca155137b # v1
         with:
           push-project: true
           tag: ${{ inputs.version || '' }}
