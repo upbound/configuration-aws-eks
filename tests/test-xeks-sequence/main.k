@@ -59,6 +59,9 @@ _test2 = metav1alpha1.CompositionTest {
         eksv1beta2.Cluster {
             **resources._kubernetesCluster
             status: {
+                atProvider:{
+                    id: "test-kubernetes-cluster"
+                }
                 conditions: conditions._readyConditions
             }
         }
@@ -75,6 +78,9 @@ _test3 = metav1alpha1.CompositionTest {
         eksv1beta1.ClusterAuth {
             **resources._kubernetesClusterAuth
             status: {
+                atProvider: {
+                    lastRefreshTime: "12345"
+                }
                 conditions: conditions._readyConditions
             }
         }
@@ -91,6 +97,9 @@ _test4 = metav1alpha1.CompositionTest {
         eksv1beta1.Addon {
             **resources._vpcCniAddon
             status: {
+                atProvider:{
+                    id: "test-vpc-cni-addon"
+                }
                 conditions: conditions._readyConditions
             }
         }
@@ -107,6 +116,9 @@ _test5 = metav1alpha1.CompositionTest {
         eksv1beta2.NodeGroup {
             **resources._nodeGroupPublic
             status: {
+                atProvider:{
+                    id: "test-node-group-public"
+                }
                 conditions: conditions._readyConditions
             }
         }
@@ -119,15 +131,8 @@ _test5 = metav1alpha1.CompositionTest {
 _test6 = metav1alpha1.CompositionTest {
     metadata.name: "sequence-2-node-group-ready"
     **_spec
-    spec.observedResources: _test4.spec.observedResources + [
-        eksv1beta2.NodeGroup {
-            **resources._nodeGroupPublic
-            status: {
-                conditions: conditions._readyConditions
-            }
-        }
-    ]
-    spec.assertResources: _test4.spec.assertResources + [
+    spec.observedResources: _test5.spec.observedResources
+    spec.assertResources: _test5.spec.assertResources + [
         resources._eksPodIdentityAgentAddon
     ]
 }

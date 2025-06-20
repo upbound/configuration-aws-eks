@@ -35,7 +35,7 @@ _items = [
                 eksv1beta1.AccessEntry{
                     metadata: {
                         annotations: {
-                            "crossplane.io/composition-resource-name": "accessEntry"
+                            "crossplane.io/composition-resource-name": "1a0d979a32b0482f0df23e1b0bbf7d1ffdf64fabbbf6d912bc958fbc2a9c937b"
                         }
                         generateName = "configuration-aws-eks-"
                         labels = {
@@ -63,7 +63,7 @@ _items = [
                 eksv1beta1.AccessPolicyAssociation{
                     metadata: {
                         annotations: {
-                            "crossplane.io/composition-resource-name": "accessPolicyAssociation"
+                            "crossplane.io/composition-resource-name": "39cd6d1ddf3182be30e9af47a93a461fd00b1d0682f933123334e54cd5456f7b"
                         }
                         generateName = "configuration-aws-eks-"
                         labels = {
