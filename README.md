@@ -22,6 +22,17 @@ In this specific configuration, the API contains:
 - Alternatively, install the Configuration from the [Upbound Marketplace](https://marketplace.upbound.io/configurations/upbound/configuration-aws-eks)
 - Check [examples](/examples/) for example XR(Composite Resource)
 
+## ArgoCD Integration
+
+This configuration supports seamless ArgoCD integration through Crossplane's `publishConnectionDetailsTo` field with templating support, implementing the functionality described in the [official Crossplane design document for external secret stores](https://github.com/crossplane/crossplane/blob/main/design/design-doc-external-secret-stores.md#templating-support-for-custom-secret-values).
+
+Use `publishConnectionDetailsTo` in your XEKS resource (see [examples/eks-xr-argocd.yaml](/examples/eks-xr-argocd.yaml)) to automatically populate ArgoCD-compatible connection details including:
+- `name`: Cluster name for ArgoCD
+- `server`: EKS cluster endpoint 
+- `config`: Kubeconfig for cluster access
+
+This enables direct cluster registration with ArgoCD without manual secret creation, following Crossplane's standard approach for templating connection secrets.
+
 ## Testing
 
 The configuration can be tested using:

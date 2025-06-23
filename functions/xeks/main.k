@@ -336,6 +336,9 @@ _items += [{
     if "kubernetesClusterAuth" in option("params").ocds:
         data: {
             kubeconfig = option("params")?.ocds?.kubernetesClusterAuth?.ConnectionDetails?.kubeconfig
+            name = xrName
+            server = get(option("params")?.ocds, "kubernetesCluster.Resource.status.atProvider.endpoint", "")
+            config = option("params")?.ocds?.kubernetesClusterAuth?.ConnectionDetails?.kubeconfig
         }
     else:
         data: {}

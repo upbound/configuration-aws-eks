@@ -5,6 +5,9 @@ metadata:
 spec:
   connectionSecretKeys:
     - kubeconfig
+    - name
+    - server
+    - config
   group: aws.platform.upbound.io
   names:
     kind: XEKS
