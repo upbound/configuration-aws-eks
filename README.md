@@ -22,6 +22,31 @@ In this specific configuration, the API contains:
 - Alternatively, install the Configuration from the [Upbound Marketplace](https://marketplace.upbound.io/configurations/upbound/configuration-aws-eks)
 - Check [examples](/examples/) for example XR(Composite Resource)
 
+## ArgoCD Integration
+
+This configuration supports seamless ArgoCD integration through Crossplane's `publishConnectionDetailsTo` field with templating support, implementing the functionality described in the [official Crossplane design document for external secret stores](https://github.com/crossplane/crossplane/blob/main/design/design-doc-external-secret-stores.md#templating-support-for-custom-secret-values).
+
+### Connection Details Available for Templating
+
+The XEKS configuration exposes these connection details for use in ArgoCD templates:
+
+- `name`: Cluster name for ArgoCD display
+- `endpoint`: EKS cluster API server endpoint  
+- `clusterName`: Actual EKS cluster name (for AWS auth)
+- `caData`: Base64-encoded certificate authority data
+
+### ArgoCD Examples
+
+#### Basic ArgoCD Integration
+See [examples/eks-xr-argocd.yaml](/examples/eks-xr-argocd.yaml) for a basic example that creates an ArgoCD-compatible cluster secret with AWS authentication.
+
+#### Role-Based ArgoCD Integration  
+See [examples/eks-xr-argocd-with-role.yaml](/examples/eks-xr-argocd-with-role.yaml) for an advanced example using IAM role assumption for ArgoCD authentication.
+
+### Template Customization
+
+You can customize the `publishConnectionDetailsTo.template` to match your specific ArgoCD setup requirements. The template supports all standard Go template syntax and has access to all connection details via `{{ .ConnectionDetails.<field> }}`.
+
 ## Testing
 
 The configuration can be tested using:

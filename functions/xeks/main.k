@@ -130,7 +130,7 @@ if clusterSecurityGroupId:
         }
     ]
 
-connectionSecretNamespace = oxr.spec.writeConnectionSecretToRef.namespace or "upbound-system"
+connectionSecretNamespace = oxr.spec.writeConnectionSecretToRef?.namespace or "upbound-system"
 
 if ready(get(ocds, "kubernetesCluster", "")) or exists("kubernetesClusterAuth"):
     _items += [
@@ -335,7 +335,11 @@ _items += [{
     kind: "CompositeConnectionDetails"
     if "kubernetesClusterAuth" in option("params").ocds:
         data: {
-            kubeconfig = option("params")?.ocds?.kubernetesClusterAuth?.ConnectionDetails?.kubeconfig
+            # Core ArgoCD fields
+            name = xrName
+            endpoint = get(option("params")?.ocds, "kubernetesCluster.Resource.status.atProvider.endpoint", "")
+            clusterName = get(option("params")?.ocds, "kubernetesCluster.Resource.status.atProvider.name", "")
+            caData = get(option("params")?.ocds, "kubernetesCluster.Resource.status.atProvider.certificateAuthority[0].data", "")
         }
     else:
         data: {}

@@ -1,0 +1,45 @@
+apiVersion: aws.platform.upbound.io/v1alpha1
+kind: XEKS
+metadata:
+  name: configuration-aws-eks-argocd-role
+spec:
+  parameters:
+    id: configuration-aws-eks-argocd-role
+    region: us-west-2
+    deletionPolicy: Delete
+    providerConfigName: default
+    accessConfig:
+      authenticationMode: API_AND_CONFIG_MAP
+      bootstrapClusterCreatorAdminPermissions: true
+    nodes:
+      count: 1
+      instanceType: t3.small
+    # Optional: specify an IAM role for ArgoCD to assume
+    iam:
+      principalArn: "arn:aws:iam::123456789012:role/ArgoCD-EKS-Role"
+  # Use publishConnectionDetailsTo for ArgoCD compatibility with role-based auth
+  publishConnectionDetailsTo:
+    name: configuration-aws-eks-argocd-role-cluster
+    namespace: argocd
+    metadata:
+      labels:
+        argocd.argoproj.io/secret-type: cluster
+      annotations:
+        # Optional: Add ArgoCD-specific annotations
+        argocd.argoproj.io/cluster-name: "{{ .ConnectionDetails.clusterName }}"
+    # ArgoCD-compatible AWS EKS cluster secret template with role ARN
+    # This version includes a roleARN for assume-role authentication
+    template: |
+      name: {{ .ConnectionDetails.name }}
+      server: {{ .ConnectionDetails.endpoint }}
+      config: |
+        {
+          "awsAuthConfig": {
+            "clusterName": "{{ .ConnectionDetails.clusterName }}",
+            "roleARN": "arn:aws:iam::123456789012:role/ArgoCD-EKS-Role"
+          },
+          "tlsClientConfig": {
+            "insecure": false,
+            "caData": "{{ .ConnectionDetails.caData }}"
+          }
+        }

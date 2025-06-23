@@ -1,0 +1,38 @@
+apiVersion: aws.platform.upbound.io/v1alpha1
+kind: XEKS
+metadata:
+  name: configuration-aws-eks-argocd
+spec:
+  parameters:
+    id: configuration-aws-eks-argocd
+    region: us-west-2
+    deletionPolicy: Delete
+    providerConfigName: default
+    accessConfig:
+      authenticationMode: API_AND_CONFIG_MAP
+      bootstrapClusterCreatorAdminPermissions: true
+    nodes:
+      count: 1
+      instanceType: t3.small
+  # Use publishConnectionDetailsTo for ArgoCD compatibility
+  publishConnectionDetailsTo:
+    name: configuration-aws-eks-argocd-cluster
+    namespace: argocd
+    metadata:
+      labels:
+        argocd.argoproj.io/secret-type: cluster
+    # ArgoCD-compatible AWS EKS cluster secret template
+    # This creates a secret that ArgoCD can use to connect to the EKS cluster
+    template: |
+      name: {{ .ConnectionDetails.name }}
+      server: {{ .ConnectionDetails.endpoint }}
+      config: |
+        {
+          "awsAuthConfig": {
+            "clusterName": "{{ .ConnectionDetails.clusterName }}"
+          },
+          "tlsClientConfig": {
+            "insecure": false,
+            "caData": "{{ .ConnectionDetails.caData }}"
+          }
+        }
