@@ -301,6 +301,85 @@ _nodeGroupPublic = eksv1beta2.NodeGroup {
     }
 }
 
+_ebsCSIDriverRole = iamv1beta1.Role {
+    metadata = {
+        annotations = {
+            "crossplane.io/composition-resource-name" = "ebsCSIDriverRole"
+        }
+        generateName = "configuration-aws-eks-"
+        labels = {
+            "crossplane.io/composite" = "configuration-aws-eks"
+            role = "ebs-csi-driver"
+        }
+    }
+    spec = {
+        deletionPolicy = "Delete"
+        forProvider = {
+            assumeRolePolicy = r"""{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "pods.eks.amazonaws.com"
+            },
+            "Action": [
+                "sts:AssumeRole",
+                "sts:TagSession"
+            ]
+        }
+    ]
+}
+"""
+            forceDetachPolicies = True
+            managedPolicyArns = [
+                "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+            ]
+        }
+        managementPolicies = [
+            "*"
+        ]
+        providerConfigRef = {
+            name = "default"
+        }
+    }
+}
+
+_ebsCSIDriverPodIdentityAssociation = eksv1beta1.PodIdentityAssociation {
+    metadata = {
+        annotations = {
+            "crossplane.io/composition-resource-name" = "ebsCSIDriverPodIdentityAssociation"
+        }
+        generateName = "configuration-aws-eks-"
+        labels = {
+            "crossplane.io/composite" = "configuration-aws-eks"
+        }
+    }
+    spec = {
+        deletionPolicy = "Delete"
+        forProvider = {
+            region = "us-west-2"
+            clusterNameSelector = {
+                matchControllerRef = True
+            }
+            namespace = "kube-system"
+            serviceAccount = "ebs-csi-controller-sa"
+            roleArnSelector = {
+                matchControllerRef = True
+                matchLabels = {
+                    role = "ebs-csi-driver"
+                }
+            }
+        }
+        managementPolicies = [
+            "*"
+        ]
+        providerConfigRef = {
+            name = "default"
+        }
+    }
+}
+
 _awsEbsCsiDriverAddon = eksv1beta1.Addon {
     metadata: {
         annotations: {

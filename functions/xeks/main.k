@@ -16,7 +16,9 @@ uid = oxr.metadata.uid or ""
 accessConfig = oxr.spec.parameters.accessConfig
 
 _metadata = lambda name: str -> any {
-    { annotations = { "krm.kcl.dev/composition-resource-name" = name }}
+    {
+        annotations = {"krm.kcl.dev/composition-resource-name" = name}
+    }
 }
 
 ready = lambda o: any, statusPath = "atProvider" -> bool {
@@ -134,7 +136,7 @@ connectionSecretNamespace = oxr.spec.writeConnectionSecretToRef.namespace or "up
 
 if ready(get(ocds, "kubernetesCluster", "")) or exists("kubernetesClusterAuth"):
     _items += [
-        eksv1beta1.ClusterAuth{
+        eksv1beta1.ClusterAuth {
             metadata = _metadata("kubernetesClusterAuth")
             spec: _defaults | {
                 forProvider = {
@@ -150,7 +152,7 @@ if ready(get(ocds, "kubernetesCluster", "")) or exists("kubernetesClusterAuth"):
     ]
 
 _items += [
-    iamv1beta1.Role{
+    iamv1beta1.Role {
         metadata = _metadata("nodegroupRole") | {
             labels = {
                 role = "nodegroup"
@@ -192,7 +194,7 @@ instanceType = oxr.spec.parameters.nodes.instanceType or ""
 
 if ready(get(ocds, "vpc-cni-addon", "")) or exists("nodeGroupPublic"):
     _items += [
-        eksv1beta2.NodeGroup{
+        eksv1beta2.NodeGroup {
             metadata = _metadata("nodeGroupPublic")
             spec: _defaults | {
                 initProvider = {
@@ -227,7 +229,7 @@ principalArn = oxr.spec?.parameters?.iam?.principalArn or False
 
 if principalArn:
     _items += [
-        eksv1beta1.AccessEntry{
+        eksv1beta1.AccessEntry {
             # force recreate when principalArn changes
             metadata = _metadata(crypto.sha256("accessEntry-{}".format(principalArn)))
             spec: _defaults | {
@@ -241,7 +243,7 @@ if principalArn:
                 }
             }
         }
-        eksv1beta1.AccessPolicyAssociation{
+        eksv1beta1.AccessPolicyAssociation {
             apiVersion: "eks.aws.upbound.io/v1beta1"
             kind: "AccessPolicyAssociation"
             # force recreate when principalArn changes
@@ -266,7 +268,7 @@ if principalArn:
 
 if ready(get(ocds, "kubernetesClusterAuth", {})) or exists("vpc-cni-addon"):
     _items += [
-        eksv1beta1.Addon{
+        eksv1beta1.Addon {
             metadata = _metadata("vpc-cni-addon")
             spec: _defaults | {
                 forProvider = {
@@ -280,9 +282,65 @@ if ready(get(ocds, "kubernetesClusterAuth", {})) or exists("vpc-cni-addon"):
         }
     ]
 
-if ready(get(ocds, "nodeGroupPublic", "")) or exists("aws-ebs-csi-driver-addon"):
+if ready(get(ocds, "nodeGroupPublic", "")) or exists("ebsCSIDriverRole"):
     _items += [
-        eksv1beta1.Addon{
+        iamv1beta1.Role {
+            metadata = _metadata("ebsCSIDriverRole") | {
+                labels = {
+                    role = "ebs-csi-driver"
+                }
+            }
+            spec: _defaults | {
+                forProvider = {
+                    forceDetachPolicies = True
+                    managedPolicyArns = [
+                        "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+                    ]
+                    assumeRolePolicy = """{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "pods.eks.amazonaws.com"
+            },
+            "Action": [
+                "sts:AssumeRole",
+                "sts:TagSession"
+            ]
+        }
+    ]
+}
+"""
+                }
+            }
+        }
+    ]
+
+if ready(get(ocds, "ebsCSIDriverRole", "")) or exists("ebsCSIDriverPodIdentityAssociation"):
+    _items += [
+        eksv1beta1.PodIdentityAssociation {
+            metadata = _metadata("ebsCSIDriverPodIdentityAssociation")
+            spec: _defaults | {
+                forProvider = {
+                    region = region
+                    clusterNameSelector.matchControllerRef = True
+                    namespace = "kube-system"
+                    serviceAccount = "ebs-csi-controller-sa"
+                    roleArnSelector = {
+                        matchControllerRef = True
+                        matchLabels = {
+                            role = "ebs-csi-driver"
+                        }
+                    }
+                }
+            }
+        }
+    ]
+
+if ready(get(ocds, "ebsCSIDriverPodIdentityAssociation", "")) or exists("aws-ebs-csi-driver-addon"):
+    _items += [
+        eksv1beta1.Addon {
             metadata = _metadata("aws-ebs-csi-driver-addon")
             spec: _defaults | {
                 forProvider = {
@@ -297,7 +355,7 @@ if ready(get(ocds, "nodeGroupPublic", "")) or exists("aws-ebs-csi-driver-addon")
 
 if ready(get(ocds, "nodeGroupPublic", "")) or exists("eks-pod-identity-agent"):
     _items += [
-        eksv1beta1.Addon{
+        eksv1beta1.Addon {
             metadata = _metadata("eks-pod-identity-agent-addon")
             spec: _defaults | {
                 forProvider = {
@@ -315,6 +373,7 @@ _items += [{
     kind = "ProviderConfig"
     metadata = {
         name = id
+        generateName = "{}-".format(id)
         annotations = {
             **_metadata("providerConfig-{}".format(t)).annotations
             "krm.kcl.dev/ready": "True"

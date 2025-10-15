@@ -4,24 +4,35 @@ metadata:
   name: configuration-aws-eks
 spec:
   dependsOn:
-    - configuration: xpkg.upbound.io/upbound/configuration-aws-network
-      # renovate: datasource=github-releases depName=upbound/configuration-aws-network
-      version: "v0.24.0"
-    - provider: xpkg.upbound.io/upbound/provider-helm
-      version: "v0"
-    - provider: xpkg.upbound.io/upbound/provider-kubernetes
-      version: "v0"
-    - provider: xpkg.upbound.io/upbound/provider-aws-eks
-      version: "v1"
-    - provider: xpkg.upbound.io/upbound/provider-aws-iam
-      version: "v1"
-    - function: xpkg.upbound.io/crossplane-contrib/function-auto-ready
-      # renovate: datasource=github-releases depName=crossplane-contrib/function-auto-ready
-      version: ">=v0.0.0"
+  - apiVersion: pkg.crossplane.io/v1
+    kind: Configuration
+    package: xpkg.upbound.io/upbound/configuration-aws-network
+    version: v0.24.0
+  - apiVersion: pkg.crossplane.io/v1
+    kind: Provider
+    package: xpkg.upbound.io/upbound/provider-helm
+    version: v0
+  - apiVersion: pkg.crossplane.io/v1
+    kind: Provider
+    package: xpkg.upbound.io/upbound/provider-kubernetes
+    version: v0
+  - apiVersion: pkg.crossplane.io/v1
+    kind: Provider
+    package: xpkg.upbound.io/upbound/provider-aws-eks
+    version: v1
+  - apiVersion: pkg.crossplane.io/v1
+    kind: Provider
+    package: xpkg.upbound.io/upbound/provider-aws-iam
+    version: v1
+  - apiVersion: pkg.crossplane.io/v1
+    kind: Function
+    package: xpkg.upbound.io/crossplane-contrib/function-auto-ready
+    version: '>=v0.0.0'
+  description: AWS EKS Configuration is reusable Configuration designed to be primarily
+    used in higher level Configurations.
   license: Apache-2.0
   maintainer: Upbound <support@upbound.io>
-  description: AWS EKS Configuration is reusable Configuration designed to be primarily used in higher level Configurations.
   readme: |
-      This configuration bundles an Upbound Cloud extension and an API definition. This API allows control planes to provision AWS EKS clusters, composed using cloud service primitives from the Upbound Official Providers
+    This configuration bundles an Upbound Cloud extension and an API definition. This API allows control planes to provision AWS EKS clusters, composed using cloud service primitives from the Upbound Official Providers
   repository: xpkg.upbound.io/upbound/configuration-aws-eks
   source: github.com/upbound/configuration-aws-eks
