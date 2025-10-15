@@ -282,61 +282,59 @@ if ready(get(ocds, "kubernetesClusterAuth", {})) or exists("vpc-cni-addon"):
         }
     ]
 
-if ready(get(ocds, "nodeGroupPublic", "")) or exists("ebsCSIDriverRole"):
-    _items += [
-        iamv1beta1.Role {
-            metadata = _metadata("ebsCSIDriverRole") | {
-                labels = {
-                    role = "ebs-csi-driver"
-                }
+_items += [
+    iamv1beta1.Role {
+        metadata = _metadata("ebsCSIDriverRole") | {
+            labels = {
+                role = "ebs-csi-driver"
             }
-            spec: _defaults | {
-                forProvider = {
-                    forceDetachPolicies = True
-                    managedPolicyArns = [
-                        "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
-                    ]
-                    assumeRolePolicy = """{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Principal": {
-                "Service": "pods.eks.amazonaws.com"
-            },
-            "Action": [
-                "sts:AssumeRole",
-                "sts:TagSession"
-            ]
         }
-    ]
+        spec: _defaults | {
+            forProvider = {
+                forceDetachPolicies = True
+                managedPolicyArns = [
+                    "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+                ]
+                assumeRolePolicy = """{
+"Version": "2012-10-17",
+"Statement": [
+    {
+        "Effect": "Allow",
+        "Principal": {
+            "Service": "pods.eks.amazonaws.com"
+        },
+        "Action": [
+            "sts:AssumeRole",
+            "sts:TagSession"
+        ]
+    }
+]
 }
 """
-                }
             }
         }
-    ]
+    }
+]
 
-if ready(get(ocds, "ebsCSIDriverRole", "")) or exists("ebsCSIDriverPodIdentityAssociation"):
-    _items += [
-        eksv1beta1.PodIdentityAssociation {
-            metadata = _metadata("ebsCSIDriverPodIdentityAssociation")
-            spec: _defaults | {
-                forProvider = {
-                    region = region
-                    clusterNameSelector.matchControllerRef = True
-                    namespace = "kube-system"
-                    serviceAccount = "ebs-csi-controller-sa"
-                    roleArnSelector = {
-                        matchControllerRef = True
-                        matchLabels = {
-                            role = "ebs-csi-driver"
-                        }
+_items += [
+    eksv1beta1.PodIdentityAssociation {
+        metadata = _metadata("ebsCSIDriverPodIdentityAssociation")
+        spec: _defaults | {
+            forProvider = {
+                region = region
+                clusterNameSelector.matchControllerRef = True
+                namespace = "kube-system"
+                serviceAccount = "ebs-csi-controller-sa"
+                roleArnSelector = {
+                    matchControllerRef = True
+                    matchLabels = {
+                        role = "ebs-csi-driver"
                     }
                 }
             }
         }
-    ]
+    }
+]
 
 if ready(get(ocds, "ebsCSIDriverPodIdentityAssociation", "")) or exists("aws-ebs-csi-driver-addon"):
     _items += [
