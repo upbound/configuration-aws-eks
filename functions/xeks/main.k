@@ -296,19 +296,19 @@ _items += [
                     "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
                 ]
                 assumeRolePolicy = """{
-"Version": "2012-10-17",
-"Statement": [
-    {
-        "Effect": "Allow",
-        "Principal": {
-            "Service": "pods.eks.amazonaws.com"
-        },
-        "Action": [
-            "sts:AssumeRole",
-            "sts:TagSession"
-        ]
-    }
-]
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Effect": "Allow",
+            "Principal": {
+                "Service": "pods.eks.amazonaws.com"
+            },
+            "Action": [
+                "sts:AssumeRole",
+                "sts:TagSession"
+            ]
+        }
+    ]
 }
 """
             }
@@ -336,7 +336,7 @@ _items += [
     }
 ]
 
-if ready(get(ocds, "ebsCSIDriverPodIdentityAssociation", "")) or exists("aws-ebs-csi-driver-addon"):
+if (ready(get(ocds, "ebsCSIDriverPodIdentityAssociation", "")) and ready(get(ocds, "nodeGroupPublic", ""))) or exists("aws-ebs-csi-driver-addon"):
     _items += [
         eksv1beta1.Addon {
             metadata = _metadata("aws-ebs-csi-driver-addon")
