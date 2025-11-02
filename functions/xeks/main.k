@@ -7,7 +7,7 @@ import crypto
 
 oxr = option("params").oxr
 ocds = option("params").ocds
-
+dxr = option("params").dxr
 xrName = oxr.metadata.name
 region = oxr.spec.parameters.region or ""
 id = oxr.spec.parameters.id or ""
@@ -397,5 +397,18 @@ _items += [{
     else:
         data: {}
 }]
+
+# Update the dxr status.
+_dxr = {
+    **dxr
+    status: {
+        eks: {
+            clusterName: ocds["kubernetesCluster"]?.Resource?.metadata?.name
+            nodeGroupArn: ocds["nodeGroupPublic"]?.Resource?.status?.atProvider?.arn
+        }
+    }
+}
+
+_items += [_dxr]
 
 items = _items

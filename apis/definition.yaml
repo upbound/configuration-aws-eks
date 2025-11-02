@@ -4,16 +4,16 @@ metadata:
   name: xeks.aws.platform.upbound.io
 spec:
   connectionSecretKeys:
-    - kubeconfig
+  - kubeconfig
   group: aws.platform.upbound.io
   names:
     kind: XEKS
     plural: xeks
   versions:
-    - name: v1alpha1
-      served: true
-      referenceable: true
-      schema:
+  - name: v1alpha1
+    served: true
+    referenceable: true
+    schema:
         openAPIV3Schema:
           type: object
           properties:
@@ -39,9 +39,9 @@ spec:
                         authenticationMode:
                           type: string
                           enum:
-                            - CONFIG_MAP
-                            - API
-                            - API_AND_CONFIG_MAP
+                          - CONFIG_MAP
+                          - API
+                          - API_AND_CONFIG_MAP
                       default:
                         bootstrapClusterCreatorAdminPermissions: true
                         authenticationMode: CONFIG_MAP
@@ -55,8 +55,8 @@ spec:
                     deletionPolicy:
                       description: Delete the external resources when the Claim/XR is deleted. Defaults to Delete
                       enum:
-                        - Delete
-                        - Orphan
+                      - Delete
+                      - Orphan
                       type: string
                       default: Delete
                     providerConfigName:
@@ -67,10 +67,11 @@ spec:
                       description: Kubernetes version
                       type: string
                       enum:
-                        - "1.33"
-                        - "1.32"
-                        - "1.31"
-                      default: "1.32"
+                      - "1.34"                      
+                      - "1.33"
+                      - "1.32"
+                      - "1.31"
+                      default: "1.34"
                     nodes:
                       type: object
                       description: EKS node configuration parameters.
@@ -83,16 +84,16 @@ spec:
                           description: instance types associated with the Node Group.
                           default: t3.small
                       required:
-                        - count
-                        - instanceType
+                      - count
+                      - instanceType
                   required:
-                    - id
-                    - region
-                    - deletionPolicy
-                    - providerConfigName
-                    - nodes
+                  - id
+                  - region
+                  - deletionPolicy
+                  - providerConfigName
+                  - nodes
               required:
-                - parameters
+              - parameters
             status:
               description: A Status represents the observed state
               properties:
