@@ -398,7 +398,7 @@ _items += [{
         data: {}
 }]
 
-# Update the dxr status immutably
+# Update the dxr status.
 _dxr = {
     **dxr
     status: {
