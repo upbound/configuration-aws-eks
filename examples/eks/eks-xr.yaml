@@ -1,7 +1,8 @@
 apiVersion: aws.platform.upbound.io/v1alpha1
-kind: XEKS
+kind: EKS
 metadata:
   name: configuration-aws-eks
+  namespace: default
 spec:
   parameters:
     id: configuration-aws-eks
@@ -12,6 +13,3 @@ spec:
     nodes:
       count: 1
       instanceType: t3.small
-  writeConnectionSecretToRef:
-    name: configuration-aws-eks-kubeconfig
-    namespace: upbound-system

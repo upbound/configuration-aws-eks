@@ -1,19 +1,20 @@
-import models.io.upbound.aws.ec2.v1beta1 as ec2v1beta1
-import models.io.upbound.aws.eks.v1beta1 as eksv1beta1
-import models.io.upbound.aws.eks.v1beta2 as eksv1beta2
-import models.io.upbound.aws.iam.v1beta1 as iamv1beta1
+import models.io.upbound.awsm.ec2.v1beta1 as ec2v1beta1
+import models.io.upbound.awsm.eks.v1beta1 as eksv1beta1
+import models.io.upbound.awsm.iam.v1beta1 as iamv1beta1
+import models.io.crossplane.kubernetesm.v1alpha1 as k8sv1alpha1
+import models.io.crossplane.helmm.v1beta1 as helmv1beta1
 import regex
 import crypto
 
-oxr = option("params").oxr
-ocds = option("params").ocds
-dxr = option("params").dxr
+oxr = option("params").oxr # observed composite resource
+_ocds = option("params").ocds # observed composed resources
+_dxr = option("params").dxr # desired composite resource
+dcds = option("params").dcds # desired composed resources
+
+params = oxr.spec.parameters
+
 xrName = oxr.metadata.name
-region = oxr.spec.parameters.region or ""
-id = oxr.spec.parameters.id or ""
-kubernetesVersion = oxr.spec.parameters.version or ""
 uid = oxr.metadata.uid or ""
-accessConfig = oxr.spec.parameters.accessConfig
 
 _metadata = lambda name: str -> any {
     {
@@ -28,7 +29,7 @@ ready = lambda o: any, statusPath = "atProvider" -> bool {
 }
 
 exists: (str) -> bool = lambda o: str -> bool {
-    resource = get(ocds, o, {})
+    resource = get(_ocds, o, {})
     resource != {}
 }
 
@@ -44,8 +45,12 @@ get = lambda x: any, y: str, d: any -> any {
 }
 
 _defaults = {
-    deletionPolicy = oxr.spec.parameters.deletionPolicy or "Delete"
-    providerConfigRef.name = oxr.spec.parameters.providerConfigName or "default"
+    managementPolicies = params.managementPolicies or ["*"]
+    if params.providerConfigName:
+        providerConfigRef = {
+            kind = "ProviderConfig"
+            name = params.providerConfigName
+        }
 }
 
 _items = []
@@ -83,15 +88,15 @@ _items += [
             }
         }
     }
-    eksv1beta2.Cluster {
+    eksv1beta1.Cluster {
         metadata = _metadata("kubernetesCluster")
         spec: _defaults | {
             forProvider = {
-                region = region
-                version = kubernetesVersion
+                region = params.region
+                version = params.kubernetesVersion
                 accessConfig = {
-                    authenticationMode = oxr.spec.parameters.accessConfig.authenticationMode
-                    bootstrapClusterCreatorAdminPermissions = oxr.spec.parameters.accessConfig.bootstrapClusterCreatorAdminPermissions
+                    authenticationMode = params.accessConfig.authenticationMode
+                    bootstrapClusterCreatorAdminPermissions = params.accessConfig.bootstrapClusterCreatorAdminPermissions
                 }
                 roleArnSelector = {
                     matchControllerRef = True
@@ -102,7 +107,7 @@ _items += [
                 vpcConfig = {
                     endpointPrivateAccess = True
                     subnetIdSelector.matchLabels = {
-                        "networks.aws.platform.upbound.io/network-id" = id
+                        "networks.aws.platform.upbound.io/network-id" = params.id
                         access = "public"
                     }
                 }
@@ -111,7 +116,7 @@ _items += [
     }
 ]
 
-clusterSecurityGroupId = option("params")?.ocds?.kubernetesCluster?.Resource?.status?.atProvider?.vpcConfig?.clusterSecurityGroupId or False
+clusterSecurityGroupId = _ocds?.kubernetesCluster?.Resource?.status?.atProvider?.vpcConfig?.clusterSecurityGroupId or False
 if clusterSecurityGroupId:
     _items += [
         ec2v1beta1.SecurityGroup {
@@ -123,29 +128,26 @@ if clusterSecurityGroupId:
             }
             spec: _defaults | {
                 forProvider = {
-                    region = region
+                    region = params.region
                     tags = {
-                        "eks.aws.platform.upbound.io/discovery" = id
+                        "eks.aws.platform.upbound.io/discovery" = params.id
                     }
                 }
             }
         }
     ]
 
-connectionSecretNamespace = oxr.spec.writeConnectionSecretToRef.namespace or "upbound-system"
-
-if ready(get(ocds, "kubernetesCluster", "")) or exists("kubernetesClusterAuth"):
+if ready(get(_ocds, "kubernetesCluster", "")) or exists("kubernetesClusterAuth"):
     _items += [
         eksv1beta1.ClusterAuth {
             metadata = _metadata("kubernetesClusterAuth")
             spec: _defaults | {
                 forProvider = {
-                    region = region
+                    region = params.region
                     clusterNameSelector.matchControllerRef = True
                 }
                 writeConnectionSecretToRef = {
                     name = "{}-ekscluster".format(uid)
-                    namespace = connectionSecretNamespace
                 }
             }
         }
@@ -192,9 +194,9 @@ _items += [
 nodeCount = oxr.spec.parameters.nodes.count or ""
 instanceType = oxr.spec.parameters.nodes.instanceType or ""
 
-if ready(get(ocds, "vpc-cni-addon", "")) or exists("nodeGroupPublic"):
+if ready(get(_ocds, "vpc-cni-addon", "")) or exists("nodeGroupPublic"):
     _items += [
-        eksv1beta2.NodeGroup {
+        eksv1beta1.NodeGroup {
             metadata = _metadata("nodeGroupPublic")
             spec: _defaults | {
                 initProvider = {
@@ -203,7 +205,7 @@ if ready(get(ocds, "vpc-cni-addon", "")) or exists("nodeGroupPublic"):
                     }
                 }
                 forProvider = {
-                    region = region
+                    region = params.region
                     clusterNameSelector.matchControllerRef = True
                     nodeRoleArnSelector = {
                         matchControllerRef = True
@@ -217,7 +219,7 @@ if ready(get(ocds, "vpc-cni-addon", "")) or exists("nodeGroupPublic"):
                     }
                     instanceTypes = [instanceType]
                     subnetIdSelector.matchLabels = {
-                        "networks.aws.platform.upbound.io/network-id" = id
+                        "networks.aws.platform.upbound.io/network-id" = params.id
                         access = "public"
                     }
                 }
@@ -234,7 +236,7 @@ if principalArn:
             metadata = _metadata(crypto.sha256("accessEntry-{}".format(principalArn)))
             spec: _defaults | {
                 forProvider = {
-                    region = region
+                    region = params.region
                     clusterNameSelector = {
                         matchControllerRef = True
                     }
@@ -244,13 +246,11 @@ if principalArn:
             }
         }
         eksv1beta1.AccessPolicyAssociation {
-            apiVersion: "eks.aws.upbound.io/v1beta1"
-            kind: "AccessPolicyAssociation"
             # force recreate when principalArn changes
             metadata = _metadata(crypto.sha256("accessPolicyAssociation-{}".format(principalArn)))
             spec: _defaults | {
                 forProvider = {
-                    region = region
+                    region = params.region
                     accessScope: {
                         type: "cluster"
                     }
@@ -266,13 +266,13 @@ if principalArn:
         }
     ]
 
-if ready(get(ocds, "kubernetesClusterAuth", {})) or exists("vpc-cni-addon"):
+if ready(get(_ocds, "kubernetesClusterAuth", {})) or exists("vpc-cni-addon"):
     _items += [
         eksv1beta1.Addon {
             metadata = _metadata("vpc-cni-addon")
             spec: _defaults | {
                 forProvider = {
-                    region = region
+                    region = params.region
                     addonName = "vpc-cni"
                     clusterNameSelector.matchControllerRef = True
                     # see https://github.com/aws/amazon-vpc-cni-k8s/blob/master/README.md for different options
@@ -321,7 +321,7 @@ _items += [
         metadata = _metadata("ebsCSIDriverPodIdentityAssociation")
         spec: _defaults | {
             forProvider = {
-                region = region
+                region = params.region
                 clusterNameSelector.matchControllerRef = True
                 namespace = "kube-system"
                 serviceAccount = "ebs-csi-controller-sa"
@@ -336,13 +336,13 @@ _items += [
     }
 ]
 
-if (ready(get(ocds, "ebsCSIDriverPodIdentityAssociation", "")) and ready(get(ocds, "nodeGroupPublic", ""))) or exists("aws-ebs-csi-driver-addon"):
+if (ready(get(_ocds, "ebsCSIDriverPodIdentityAssociation", "")) and ready(get(_ocds, "nodeGroupPublic", ""))) or exists("aws-ebs-csi-driver-addon"):
     _items += [
         eksv1beta1.Addon {
             metadata = _metadata("aws-ebs-csi-driver-addon")
             spec: _defaults | {
                 forProvider = {
-                    region = region
+                    region = params.region
                     addonName = "aws-ebs-csi-driver"
                     clusterNameSelector.matchControllerRef = True
                     configurationValues = '{"defaultStorageClass": {"enabled": true}}'
@@ -351,13 +351,13 @@ if (ready(get(ocds, "ebsCSIDriverPodIdentityAssociation", "")) and ready(get(ocd
         }
     ]
 
-if ready(get(ocds, "nodeGroupPublic", "")) or exists("eks-pod-identity-agent"):
+if ready(get(_ocds, "nodeGroupPublic", "")) or exists("eks-pod-identity-agent"):
     _items += [
         eksv1beta1.Addon {
             metadata = _metadata("eks-pod-identity-agent-addon")
             spec: _defaults | {
                 forProvider = {
-                    region = region
+                    region = params.region
                     addonName = "eks-pod-identity-agent"
                     clusterNameSelector.matchControllerRef = True
                 }
@@ -365,46 +365,65 @@ if ready(get(ocds, "nodeGroupPublic", "")) or exists("eks-pod-identity-agent"):
         }
     ]
 
-providerConfigTypes = ["helm", "kubernetes"]
-_items += [{
-    apiVersion = "{}.crossplane.io/v1alpha1".format(t)
-    kind = "ProviderConfig"
-    metadata = {
-        name = id
-        generateName = "{}-".format(id)
-        annotations = {
-            **_metadata("providerConfig-{}".format(t)).annotations
-            "krm.kcl.dev/ready": "True"
+_items += [
+    k8sv1alpha1.ProviderConfig {
+        metadata = {
+            name = params.id
+            generateName = "{}-".format(params.id)
+            annotations = {
+                **_metadata("providerConfig-kubernetes").annotations
+                "krm.kcl.dev/ready": "True"
+            }
+        }
+        spec.credentials = {
+            secretRef = {
+                name = "{}-ekscluster".format(uid)
+                namespace = oxr.metadata.namespace
+                key = "kubeconfig"
+            }
+            source = "Secret"
         }
     }
-    spec.credentials = {
-        secretRef = {
-            name = "{}-ekscluster".format(uid)
-            namespace = connectionSecretNamespace
-            key = "kubeconfig"
+]
+
+_items += [
+    helmv1beta1.ProviderConfig {
+        metadata = {
+            name = params.id
+            generateName = "{}-".format(params.id)
+            annotations = {
+                **_metadata("providerConfig-helm").annotations
+                "krm.kcl.dev/ready": "True"
+            }
         }
-        source = "Secret"
+        spec.credentials = {
+            secretRef = {
+                name = "{}-ekscluster".format(uid)
+                namespace = oxr.metadata.namespace
+                key = "kubeconfig"
+            }
+            source = "Secret"
+        }
     }
-} for t in providerConfigTypes]
+]
 
 _items += [{
     apiVersion: "meta.krm.kcl.dev/v1alpha1"
     kind: "CompositeConnectionDetails"
-    if "kubernetesClusterAuth" in option("params").ocds:
+    if "kubernetesClusterAuth" in _ocds:
         data: {
-            kubeconfig = option("params")?.ocds?.kubernetesClusterAuth?.ConnectionDetails?.kubeconfig
+            kubeconfig = _ocds?.kubernetesClusterAuth?.ConnectionDetails?.kubeconfig
         }
     else:
         data: {}
 }]
 
 # Update the dxr status.
-_dxr = {
-    **dxr
+_dxr = _dxr | {
     status: {
         eks: {
-            clusterName: ocds["kubernetesCluster"]?.Resource?.metadata?.name
-            nodeGroupArn: ocds["nodeGroupPublic"]?.Resource?.status?.atProvider?.arn
+            clusterName: _ocds["kubernetesCluster"]?.Resource?.metadata?.name
+            nodeGroupArn: _ocds["nodeGroupPublic"]?.Resource?.status?.atProvider?.arn
         }
     }
 }

@@ -28,18 +28,18 @@
     ones have reached a "Ready" status, enforcing the correct creation and dependency order.
 """
 
-import models.io.upbound.aws.eks.v1beta1 as eksv1beta1
-import models.io.upbound.aws.eks.v1beta2 as eksv1beta2
-import models.io.upbound.aws.iam.v1beta1 as iamv1beta1
+import models.io.upbound.awsm.eks.v1beta1 as eksv1beta1
+import models.io.upbound.awsm.iam.v1beta1 as iamv1beta1
 import models.io.upbound.dev.meta.v1alpha1 as metav1alpha1
+
 import resources
 import conditions
 
 _spec = metav1alpha1.CompositionTest {
     spec = {
-        compositionPath: "apis/composition.yaml"
-        xrPath: "examples/eks-xr.yaml"
-        xrdPath: "apis/definition.yaml"
+        compositionPath: "apis/eks/composition.yaml"
+        xrPath: "examples/eks/eks-xr.yaml"
+        xrdPath: "apis/eks/definition.yaml"
         timeoutSeconds: 60
         validate: False
     }
@@ -64,7 +64,7 @@ _test2 = metav1alpha1.CompositionTest {
     metadata.name: "sequence-0-cluster-ready"
     **_spec
     spec.observedResources: [
-        eksv1beta2.Cluster {
+        eksv1beta1.Cluster {
             **resources._kubernetesCluster
             status: {
                 atProvider:{
@@ -139,7 +139,7 @@ _test5 = metav1alpha1.CompositionTest {
                 conditions: conditions._readyConditions
             }
         }
-        eksv1beta2.NodeGroup {
+        eksv1beta1.NodeGroup {
             **resources._nodeGroupPublic
             status: {
                 atProvider:{

@@ -1,16 +1,16 @@
 apiVersion: apiextensions.crossplane.io/v1
 kind: Composition
 metadata:
-  name: xeks.aws.platform.upbound.io
+  name: eks.aws.platform.upbound.io
 spec:
   compositeTypeRef:
     apiVersion: aws.platform.upbound.io/v1alpha1
-    kind: XEKS
+    kind: EKS
   mode: Pipeline
   pipeline:
   - functionRef:
-      name: upbound-configuration-aws-eksxeks
-    step: xeks
+      name: upbound-configuration-aws-ekseks
+    step: eks
   - functionRef:
       name: crossplane-contrib-function-auto-ready
     step: crossplane-contrib-function-auto-ready
