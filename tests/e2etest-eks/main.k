@@ -13,6 +13,7 @@ _items = [
                 platformawsv1alpha1.EKS{
                     metadata = {
                         name = "configuration-aws-eks"
+                        namespace = "default"
                     }
                     spec = {
                         parameters = {
@@ -32,6 +33,7 @@ _items = [
                 platformawsv1alpha1.Network{
                     metadata = {
                         name = "configuration-aws-eks"
+                        namespace = "default"
                     }
                     spec = {
                         parameters = {

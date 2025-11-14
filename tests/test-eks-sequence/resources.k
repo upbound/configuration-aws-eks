@@ -47,6 +47,7 @@ _kubernetesCluster = eksv1beta1.Cluster {
 _xr = platformawsv1alpha1.EKS {
     metadata = {
         name = "configuration-aws-eks"
+        namespace = "default"
     }
     spec = {
         parameters = {

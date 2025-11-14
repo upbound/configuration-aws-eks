@@ -8,7 +8,10 @@ _items = [
         spec= {
             assertResources: [
                 platformawsv1alpha1.EKS{
-                    metadata.name: "configuration-aws-eks"
+                    metadata = {
+                        name: "configuration-aws-eks"
+                        namespace: "default"
+                    }
                     spec: {
                         parameters: {
                             id: "configuration-aws-eks"
