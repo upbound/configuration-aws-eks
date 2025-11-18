@@ -48,7 +48,10 @@ _items = [
             extraResources = [
                 # Define the provider configuration
                 awsv1beta1.ProviderConfig{
-                    metadata.name = "default"
+                    metadata = {
+                        name = "default"
+                        namespace = "default"
+                    }
                     spec = {
                         credentials = {
                             source = "Upbound"
