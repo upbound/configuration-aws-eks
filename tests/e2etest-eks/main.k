@@ -7,7 +7,8 @@ _items = [
     metav1alpha1.E2ETest{
         metadata.name: "eks"
         spec= {
-            crossplane.autoUpgrade.channel: "Rapid"
+            crossplane.autoUpgrade.channel: "None"
+            crossplane.version = "2.0.2-up.5"
             defaultConditions: ["Ready"]
             manifests: [
                 platformawsv1alpha1.EKS{
