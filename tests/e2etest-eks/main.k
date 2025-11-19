@@ -1,4 +1,4 @@
-import models.io.upbound.aws.v1beta1 as awsv1beta1
+import models.io.upbound.awsm.v1beta1 as awsv1beta1
 import models.io.upbound.dev.meta.v1alpha1 as metav1alpha1
 import models.io.upbound.platform.aws.v1alpha1 as platformawsv1alpha1
 
@@ -7,12 +7,14 @@ _items = [
     metav1alpha1.E2ETest{
         metadata.name: "eks"
         spec= {
-            crossplane.autoUpgrade.channel: "Rapid"
+            crossplane.autoUpgrade.channel: "None"
+            crossplane.version = "2.0.2-up.5"
             defaultConditions: ["Ready"]
             manifests: [
-                platformawsv1alpha1.XEKS{
+                platformawsv1alpha1.EKS{
                     metadata = {
                         name = "configuration-aws-eks"
+                        namespace = "default"
                     }
                     spec = {
                         parameters = {
@@ -27,15 +29,12 @@ _items = [
                                 instanceType = "t3.small"
                             }
                         }
-                        writeConnectionSecretToRef = {
-                            name = "configuration-aws-eks-kubeconfig"
-                            namespace = "upbound-system"
-                        }
                     }
                 }
-                platformawsv1alpha1.XNetwork{
+                platformawsv1alpha1.Network{
                     metadata = {
                         name = "configuration-aws-eks"
+                        namespace = "default"
                     }
                     spec = {
                         parameters = {
@@ -49,7 +48,10 @@ _items = [
             extraResources = [
                 # Define the provider configuration
                 awsv1beta1.ProviderConfig{
-                    metadata.name = "default"
+                    metadata = {
+                        name = "default"
+                        namespace = "default"
+                    }
                     spec = {
                         credentials = {
                             source = "Upbound"

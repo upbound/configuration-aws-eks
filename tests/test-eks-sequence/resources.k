@@ -1,11 +1,10 @@
-import models.io.crossplane.helm.v1alpha1 as helmv1alpha1
-import models.io.crossplane.kubernetes.v1alpha1 as kubernetesv1alpha1
-import models.io.upbound.aws.eks.v1beta1 as eksv1beta1
-import models.io.upbound.aws.eks.v1beta2 as eksv1beta2
-import models.io.upbound.aws.iam.v1beta1 as iamv1beta1
+import models.io.crossplane.helmm.v1beta1 as helmv1beta1
+import models.io.crossplane.kubernetesm.v1alpha1 as kubernetesv1alpha1
+import models.io.upbound.awsm.eks.v1beta1 as eksv1beta1
+import models.io.upbound.awsm.iam.v1beta1 as iamv1beta1
 import models.io.upbound.platform.aws.v1alpha1 as platformawsv1alpha1
 
-_kubernetesCluster = eksv1beta2.Cluster {
+_kubernetesCluster = eksv1beta1.Cluster {
     metadata = {
         annotations = {
             "crossplane.io/composition-resource-name" = "kubernetesCluster"
@@ -16,7 +15,7 @@ _kubernetesCluster = eksv1beta2.Cluster {
         }
     }
     spec = {
-        deletionPolicy = "Delete"
+        managementPolicies = ["*"]
         forProvider = {
             region = "us-west-2"
             accessConfig = {
@@ -39,14 +38,16 @@ _kubernetesCluster = eksv1beta2.Cluster {
             }
         }
         providerConfigRef = {
+            kind = "ProviderConfig"
             name = "default"
         }
     }
 }
 
-_xr = platformawsv1alpha1.XEKS {
+_xr = platformawsv1alpha1.EKS {
     metadata = {
         name = "configuration-aws-eks"
+        namespace = "default"
     }
     spec = {
         parameters = {
@@ -56,10 +57,6 @@ _xr = platformawsv1alpha1.XEKS {
                 instanceType = "t3.small"
             }
             region = "us-west-2"
-        }
-        writeConnectionSecretToRef = {
-            name = "configuration-aws-eks-kubeconfig"
-            namespace = "upbound-system"
         }
     }
 }
@@ -76,7 +73,7 @@ _roleControlPlane = iamv1beta1.Role {
         }
     }
     spec = {
-        deletionPolicy = "Delete"
+        managementPolicies = ["*"]
         forProvider = {
             assumeRolePolicy = r"""{
     "Version": "2012-10-17",
@@ -101,6 +98,7 @@ _roleControlPlane = iamv1beta1.Role {
             ]
         }
         providerConfigRef = {
+            kind = "ProviderConfig"
             name = "default"
         }
     }
@@ -118,7 +116,7 @@ _roleNodeGroup = iamv1beta1.Role {
         }
     }
     spec = {
-        deletionPolicy = "Delete"
+        managementPolicies = ["*"]
         forProvider = {
             assumeRolePolicy = r"""{
     "Version": "2012-10-17",
@@ -146,11 +144,12 @@ _roleNodeGroup = iamv1beta1.Role {
             ]
         }
         providerConfigRef = {
+            kind = "ProviderConfig"
             name = "default"
         }
     }
 }
-_providerConfigHelm = helmv1alpha1.ProviderConfig {
+_providerConfigHelm = helmv1beta1.ProviderConfig {
     metadata = {
         annotations = {
             "crossplane.io/composition-resource-name" = "providerConfig-helm"
@@ -166,7 +165,7 @@ _providerConfigHelm = helmv1alpha1.ProviderConfig {
             secretRef = {
                 key = "kubeconfig"
                 name = "-ekscluster"
-                namespace = "upbound-system"
+                namespace = "default"
             }
             source = "Secret"
         }
@@ -188,7 +187,7 @@ _providerConfigKubernetes = kubernetesv1alpha1.ProviderConfig {
             secretRef = {
                 key = "kubeconfig"
                 name = "-ekscluster"
-                namespace = "upbound-system"
+                namespace = "default"
             }
             source = "Secret"
         }
@@ -206,7 +205,7 @@ _kubernetesClusterAuth = eksv1beta1.ClusterAuth {
         }
     }
     spec = {
-        deletionPolicy = "Delete"
+        managementPolicies = ["*"]
         forProvider = {
             clusterNameSelector = {
                 matchControllerRef = True
@@ -218,11 +217,11 @@ _kubernetesClusterAuth = eksv1beta1.ClusterAuth {
             "*"
         ]
         providerConfigRef = {
+            kind = "ProviderConfig"
             name = "default"
         }
         writeConnectionSecretToRef = {
             name = "-ekscluster"
-            namespace = "upbound-system"
         }
     }
 }
@@ -238,7 +237,7 @@ _vpcCniAddon = eksv1beta1.Addon {
         }
     }
     spec: {
-        deletionPolicy: "Delete"
+        managementPolicies = ["*"]
         forProvider = {
             addonName: "vpc-cni"
             clusterNameSelector: {
@@ -251,12 +250,13 @@ _vpcCniAddon = eksv1beta1.Addon {
             "*"
         ]
         providerConfigRef = {
+            kind = "ProviderConfig"
             name = "default"
         }
     }
 }
 
-_nodeGroupPublic = eksv1beta2.NodeGroup {
+_nodeGroupPublic = eksv1beta1.NodeGroup {
     metadata: {
         annotations: {
             "crossplane.io/composition-resource-name": "nodeGroupPublic"
@@ -267,7 +267,7 @@ _nodeGroupPublic = eksv1beta2.NodeGroup {
         }
     }
     spec: {
-        deletionPolicy: "Delete"
+        managementPolicies = ["*"]
         forProvider = {
             region = "us-west-2"
             clusterNameSelector.matchControllerRef = True
@@ -296,6 +296,7 @@ _nodeGroupPublic = eksv1beta2.NodeGroup {
             "*"
         ]
         providerConfigRef = {
+            kind = "ProviderConfig"
             name = "default"
         }
     }
@@ -313,7 +314,7 @@ _ebsCSIDriverRole = iamv1beta1.Role {
         }
     }
     spec = {
-        deletionPolicy = "Delete"
+        managementPolicies = ["*"]
         forProvider = {
             assumeRolePolicy = r"""{
     "Version": "2012-10-17",
@@ -340,6 +341,7 @@ _ebsCSIDriverRole = iamv1beta1.Role {
             "*"
         ]
         providerConfigRef = {
+            kind = "ProviderConfig"
             name = "default"
         }
     }
@@ -356,7 +358,7 @@ _ebsCSIDriverPodIdentityAssociation = eksv1beta1.PodIdentityAssociation {
         }
     }
     spec = {
-        deletionPolicy = "Delete"
+        managementPolicies = ["*"]
         forProvider = {
             region = "us-west-2"
             clusterNameSelector = {
@@ -375,6 +377,7 @@ _ebsCSIDriverPodIdentityAssociation = eksv1beta1.PodIdentityAssociation {
             "*"
         ]
         providerConfigRef = {
+            kind = "ProviderConfig"
             name = "default"
         }
     }
@@ -391,7 +394,7 @@ _awsEbsCsiDriverAddon = eksv1beta1.Addon {
         }
     }
     spec: {
-        deletionPolicy: "Delete"
+        managementPolicies = ["*"]
         forProvider = {
             addonName: "aws-ebs-csi-driver"
             clusterNameSelector: {
@@ -403,6 +406,7 @@ _awsEbsCsiDriverAddon = eksv1beta1.Addon {
             "*"
         ]
         providerConfigRef = {
+            kind = "ProviderConfig"
             name = "default"
         }
     }
@@ -419,7 +423,7 @@ _eksPodIdentityAgentAddon = eksv1beta1.Addon {
         }
     }
     spec: {
-        deletionPolicy: "Delete"
+        managementPolicies = ["*"]
         forProvider = {
             addonName: "eks-pod-identity-agent"
             clusterNameSelector: {
@@ -431,6 +435,7 @@ _eksPodIdentityAgentAddon = eksv1beta1.Addon {
             "*"
         ]
         providerConfigRef = {
+            kind = "ProviderConfig"
             name = "default"
         }
     }

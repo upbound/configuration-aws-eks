@@ -12,9 +12,9 @@ The core components of a custom API in [Upbound Project](https://docs.upbound.io
 
 In this specific configuration, the API contains:
 
-- **an [AWS EKS](/apis/definition.yaml) custom resource type.**
-- **Composition:** Configured in [/apis/composition.yaml](/apis/composition.yaml)
-- **Embedded Function:** The Composition logic is encapsulated within [embedded function](/functions/xeks/main.k)
+- **an [AWS EKS](/apis/eks/definition.yaml) custom resource type.**
+- **Composition:** Configured in [/apis/eks/composition.yaml](/apis/eks/composition.yaml)
+- **Embedded Function:** The Composition logic is encapsulated within [embedded function](/functions/eks/main.k)
 
 ## Deployment
 
@@ -26,9 +26,9 @@ In this specific configuration, the API contains:
 
 The configuration can be tested using:
 
-- `up composition render --xrd=apis/definition.yaml apis/composition.yaml examples/eks-xr.yaml` to render the composition
-- `up test run tests/*` to run composition tests in `tests/test-xeks/`
-- `up test run tests/* --e2e` to run end-to-end tests in `tests/e2etest-xeks/`
+- `up composition render --xrd=apis/eks/definition.yaml apis/eks/composition.yaml examples/eks/eks-xr.yaml` to render the composition
+- `up test run tests/*` to run composition tests in `tests/test-eks/`
+- `up test run tests/* --e2e` to run end-to-end tests in `tests/e2etest-eks/`
 
 ## Next steps
 

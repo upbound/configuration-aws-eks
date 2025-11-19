@@ -1,5 +1,5 @@
 [package]
-name = "test-xeks"
+name = "test-eks-cluster-security-group"
 version = "0.0.1"
 
 [dependencies]

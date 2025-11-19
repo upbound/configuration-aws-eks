@@ -1,5 +1,5 @@
 [package]
-name = "e2etest-xeks"
+name = "test-eks-iam"
 version = "0.0.1"
 
 [dependencies]

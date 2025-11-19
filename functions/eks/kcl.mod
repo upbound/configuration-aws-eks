@@ -1,5 +1,5 @@
 [package]
-name = "xeks"
+name = "eks"
 version = "0.0.1"
 
 [dependencies]

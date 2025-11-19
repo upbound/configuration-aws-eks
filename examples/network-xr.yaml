@@ -1,7 +1,8 @@
 apiVersion: aws.platform.upbound.io/v1alpha1
-kind: XNetwork
+kind: Network
 metadata:
   name: configuration-aws-eks
+  namespace: default
 spec:
   parameters:
     id: configuration-aws-eks
