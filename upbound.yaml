@@ -7,7 +7,7 @@ spec:
   - apiVersion: pkg.crossplane.io/v1
     kind: Configuration
     package: xpkg.upbound.io/upbound/configuration-aws-network
-    version: v0.24.0
+    version: v1.0.0
   - apiVersion: pkg.crossplane.io/v1
     kind: Provider
     package: xpkg.upbound.io/upbound/provider-helm
