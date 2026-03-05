@@ -93,7 +93,7 @@ _items += [
         spec: _defaults | {
             forProvider = {
                 region = params.region
-                version = params.kubernetesVersion
+                version = params.version
                 accessConfig = {
                     authenticationMode = params.accessConfig.authenticationMode
                     bootstrapClusterCreatorAdminPermissions = params.accessConfig.bootstrapClusterCreatorAdminPermissions
