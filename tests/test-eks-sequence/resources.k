@@ -221,7 +221,7 @@ _kubernetesClusterAuth = eksv1beta1.ClusterAuth {
             name = "default"
         }
         writeConnectionSecretToRef = {
-            name = "-ekscluster"
+            name = "configuration-aws-eks-ekscluster"
         }
     }
 }
