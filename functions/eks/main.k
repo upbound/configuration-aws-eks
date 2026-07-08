@@ -14,7 +14,6 @@ dcds = option("params").dcds # desired composed resources
 params = oxr.spec.parameters
 
 xrName = oxr.metadata.name
-uid = oxr.metadata.uid or ""
 
 _metadata = lambda name: str -> any {
     {
@@ -147,7 +146,7 @@ if ready(get(_ocds, "kubernetesCluster", "")) or exists("kubernetesClusterAuth")
                     clusterNameSelector.matchControllerRef = True
                 }
                 writeConnectionSecretToRef = {
-                    name = "{}-ekscluster".format(uid)
+                    name = "{}-ekscluster".format(params.id)
                 }
             }
         }
@@ -377,7 +376,7 @@ _items += [
         }
         spec.credentials = {
             secretRef = {
-                name = "{}-ekscluster".format(uid)
+                name = "{}-ekscluster".format(params.id)
                 namespace = oxr.metadata.namespace
                 key = "kubeconfig"
             }
@@ -398,7 +397,7 @@ _items += [
         }
         spec.credentials = {
             secretRef = {
-                name = "{}-ekscluster".format(uid)
+                name = "{}-ekscluster".format(params.id)
                 namespace = oxr.metadata.namespace
                 key = "kubeconfig"
             }
