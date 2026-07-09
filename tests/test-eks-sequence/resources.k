@@ -164,7 +164,7 @@ _providerConfigHelm = helmv1beta1.ProviderConfig {
         credentials = {
             secretRef = {
                 key = "kubeconfig"
-                name = "-ekscluster"
+                name = "configuration-aws-eks-ekscluster"
                 namespace = "default"
             }
             source = "Secret"
@@ -186,7 +186,7 @@ _providerConfigKubernetes = kubernetesv1alpha1.ProviderConfig {
         credentials = {
             secretRef = {
                 key = "kubeconfig"
-                name = "-ekscluster"
+                name = "configuration-aws-eks-ekscluster"
                 namespace = "default"
             }
             source = "Secret"
@@ -221,7 +221,7 @@ _kubernetesClusterAuth = eksv1beta1.ClusterAuth {
             name = "default"
         }
         writeConnectionSecretToRef = {
-            name = "-ekscluster"
+            name = "configuration-aws-eks-ekscluster"
         }
     }
 }

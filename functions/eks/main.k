@@ -14,7 +14,6 @@ dcds = option("params").dcds # desired composed resources
 params = oxr.spec.parameters
 
 xrName = oxr.metadata.name
-uid = oxr.metadata.uid or ""
 
 _metadata = lambda name: str -> any {
     {
@@ -147,7 +146,7 @@ if ready(get(_ocds, "kubernetesCluster", "")) or exists("kubernetesClusterAuth")
                     clusterNameSelector.matchControllerRef = True
                 }
                 writeConnectionSecretToRef = {
-                    name = "{}-ekscluster".format(uid)
+                    name = "{}-ekscluster".format(params.id)
                 }
             }
         }
@@ -377,7 +376,7 @@ _items += [
         }
         spec.credentials = {
             secretRef = {
-                name = "{}-ekscluster".format(uid)
+                name = "{}-ekscluster".format(params.id)
                 namespace = oxr.metadata.namespace
                 key = "kubeconfig"
             }
@@ -398,7 +397,7 @@ _items += [
         }
         spec.credentials = {
             secretRef = {
-                name = "{}-ekscluster".format(uid)
+                name = "{}-ekscluster".format(params.id)
                 namespace = oxr.metadata.namespace
                 key = "kubeconfig"
             }
@@ -418,12 +417,31 @@ _items += [{
         data: {}
 }]
 
+# Read the observed Cluster / NodeGroup atProvider blocks (None until they
+# sync). Surfacing these on the EKS status lets higher-level configurations
+# (e.g. configuration-aws-ctp) read the OIDC issuer, cluster ARN and running
+# node instance type from the EKS XR instead of composing their own
+# observe-only Cluster / NodeGroup managed resources.
+_clusterAtProvider = _ocds["kubernetesCluster"]?.Resource?.status?.atProvider
+_ngAtProvider = _ocds["nodeGroupPublic"]?.Resource?.status?.atProvider
+
+_identity = _clusterAtProvider?.identity or []
+_oidcList = (_identity[0]?.oidc or []) if len(_identity) > 0 else []
+_oidcIssuerUrl = (_oidcList[0]?.issuer or "") if len(_oidcList) > 0 else ""
+
+_ngInstanceTypes = _ngAtProvider?.instanceTypes or []
+
 # Update the dxr status.
 _dxr = _dxr | {
     status: {
         eks: {
             clusterName: _ocds["kubernetesCluster"]?.Resource?.metadata?.name
-            nodeGroupArn: _ocds["nodeGroupPublic"]?.Resource?.status?.atProvider?.arn
+            clusterArn: _clusterAtProvider?.arn
+            oidcIssuerUrl: _oidcIssuerUrl
+            nodeGroupArn: _ngAtProvider?.arn
+            nodeGroup: {
+                instanceType: _ngInstanceTypes[0] if len(_ngInstanceTypes) > 0 else ""
+            }
         }
     }
 }

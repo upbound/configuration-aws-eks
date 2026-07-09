@@ -65,6 +65,8 @@ _items = [
                             "crossplane.io/composition-resource-name" = "kubernetesCluster"
                         }
                         generateName = "configuration-aws-eks-"
+                        name = "configuration-aws-eks-kubernetescluster"
+                        namespace = "default"
                         labels = {
                             "crossplane.io/composite" = "configuration-aws-eks"
                         }
