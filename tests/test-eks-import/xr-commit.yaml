@@ -1,0 +1,28 @@
+apiVersion: aws.platform.upbound.io/v1alpha1
+kind: EKS
+metadata:
+  name: imported-eks
+  namespace: default
+spec:
+  parameters:
+    id: imported-eks
+    region: us-west-2
+    accessConfig:
+      authenticationMode: API_AND_CONFIG_MAP
+      bootstrapClusterCreatorAdminPermissions: true
+    version: "1.34"
+    nodes:
+      count: 1
+      instanceType: t3.small
+    import:
+      commit: true
+      resources:
+        kubernetesCluster: imported-eks-cluster
+        controlplaneRole: imported-eks-controlplane-role
+        nodegroupRole: imported-eks-nodegroup-role
+        ebsCSIDriverRole: imported-eks-ebs-csi-role
+        nodeGroupPublic: imported-ng
+        vpcCniAddon: imported-eks-cluster:vpc-cni
+        ebsCsiAddon: imported-eks-cluster:aws-ebs-csi-driver
+        podIdentityAgentAddon: imported-eks-cluster:eks-pod-identity-agent
+        ebsCSIDriverPodIdentityAssociation: a-abc1234567890abc

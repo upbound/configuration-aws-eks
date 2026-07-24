@@ -1,0 +1,70 @@
+# Brownfield import example.
+#
+# Adopts an EKS cluster (and its nodegroup, roles, addons, pod-identity association)
+# that already exists in AWS into this composition WITHOUT recreating anything.
+#
+# Lifecycle:
+#   1. Apply this XR as-is (commit: false). Every managed resource is created
+#      observe-only ("Observe","LateInitialize") and pinned to the external names
+#      below. Nothing in AWS is mutated. Watch `status.import`: a generic diff of
+#      the composition's desired forProvider vs the live atProvider, split into
+#      `drift` (reconcilable via params, -> driftCount) and `sideEffects`
+#      (committing does these anyway: tag rewrites, role policies, ... -> sideEffectCount).
+#   2. Reconcile spec.parameters (version, instanceType, ...) until
+#      `status.import.driftCount` is 0 for anything you care about, and review
+#      `status.import.sideEffects` so you accept what else commit will change. On
+#      commit the provider refuses any change that would require REPLACING a
+#      resource, so immutable/create-time fields are protected regardless.
+#   3. Set import.commit: true to take full management ("*").
+#   4. Once healthy, delete the entire `import` block. External names persist on the
+#      managed resources, so the cluster stays adopted. Keep `network` (below) - it is
+#      a normal parameter, not part of import.
+#
+# Replace every <...> with the real value of the existing AWS resource.
+apiVersion: aws.platform.upbound.io/v1alpha1
+kind: EKS
+metadata:
+  name: imported-eks
+  namespace: default
+spec:
+  parameters:
+    id: imported-eks
+    region: us-west-2
+    accessConfig:
+      authenticationMode: API_AND_CONFIG_MAP
+      bootstrapClusterCreatorAdminPermissions: true
+    version: "1.33"
+    nodes:
+      count: 1
+      instanceType: t3.small
+    # Existing network placement. Required for import: the cluster lives in a VPC this
+    # composition did not create, so give it the real subnets. Node group subnets are
+    # immutable, so nodeSubnetIds MUST match the existing node group exactly.
+    network:
+      subnetIds:            # cluster control-plane ENI subnets (all AZs)
+        - <subnet-id-a>
+        - <subnet-id-b>
+        - <subnet-id-c>
+      nodeSubnetIds:        # worker-node subnets (subset the node group actually uses)
+        - <subnet-id-a>
+        - <subnet-id-b>
+        - <subnet-id-c>
+    import:
+      commit: false
+      resources:
+        # eks Cluster external-name = <cluster-name>
+        kubernetesCluster: <cluster-name>
+        # iam Role external-name = <role-name>
+        controlplaneRole: <controlplane-role-name>
+        nodegroupRole: <nodegroup-role-name>
+        ebsCSIDriverRole: <ebs-csi-driver-role-name>
+        # eks NodeGroup external-name = <nodegroup-name> ONLY (cluster comes from the
+        # composition's clusterNameSelector - do NOT prefix the cluster name).
+        nodeGroupPublic: <nodegroup-name>
+        # eks Addon external-name = <cluster-name>:<addon-name>
+        vpcCniAddon: <cluster-name>:vpc-cni
+        ebsCsiAddon: <cluster-name>:aws-ebs-csi-driver
+        podIdentityAgentAddon: <cluster-name>:eks-pod-identity-agent
+        # eks PodIdentityAssociation external-name = <association-id> ONLY (e.g. a-xxxxxxxxxxxxxxxxx;
+        # cluster comes from the composition's clusterNameSelector).
+        ebsCSIDriverPodIdentityAssociation: <association-id>
