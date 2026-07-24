@@ -5,7 +5,7 @@ import models.io.crossplane.kubernetesm.v1alpha1 as k8sv1alpha1
 import models.io.crossplane.helmm.v1beta1 as helmv1beta1
 import regex
 import crypto
-import json
+import importkit
 
 oxr = option("params").oxr # observed composite resource
 _ocds = option("params").ocds # observed composed resources
@@ -64,8 +64,7 @@ get = lambda x: any, y: str, d: any -> any {
     x[c] if len(p) == 1 and c in x else d if c not in x else get(x[c], y, d)
 }
 
-_mgmtPolicies = ["Observe", "LateInitialize"] if (_importActive and not _commit) else \
-    (["*"] if _importActive else (params.managementPolicies or ["*"]))
+_mgmtPolicies = importkit.managementPolicies(_importActive, _commit, params.managementPolicies or ["*"])
 
 _defaults = {
     managementPolicies = _mgmtPolicies
@@ -455,11 +454,9 @@ _items += [{
         data: {}
 }]
 
-# Validation and drift detection for import mode
+# Import spec (EKS-specific) fed to the generic importkit engine below.
 _requiredKeys = ["controlplaneRole","nodegroupRole","ebsCSIDriverRole","kubernetesCluster","nodeGroupPublic","vpcCniAddon","ebsCsiAddon","podIdentityAgentAddon","ebsCSIDriverPodIdentityAssociation"]
 _requiredKeys += (["accessEntry","accessPolicyAssociation"] if principalArn else [])
-_missing = [k for k in _requiredKeys if k not in _importResources] if _importActive else []
-_blockRender = _importActive and len(_missing) > 0
 
 # Read the observed Cluster / NodeGroup atProvider blocks (None until they
 # sync). Surfacing these on the EKS status lets higher-level configurations
@@ -475,28 +472,15 @@ _oidcIssuerUrl = (_oidcList[0]?.issuer or "") if len(_oidcList) > 0 else ""
 
 _ngInstanceTypes = _ngAtProvider?.instanceTypes or []
 
-# --- Generic import diff ----------------------------------------------------
-# spec.forProvider is the source of truth; status.atProvider is live cloud state.
-# Committing (managementPolicies -> ["*"]) converges live to desired, so the full
-# set of changes a commit would make is a deep diff of forProvider vs atProvider,
-# read straight off each observed managed resource. There is no per-field
-# curation: any leaf the composition declares that the cloud disagrees with shows
-# up automatically. Desired values are read from the OBSERVED resource's
-# forProvider, which already carries the provider-injected defaults (e.g. the
-# crossplane-* tags) and LateInitialized fields, so it reflects exactly what the
-# provider would enforce on commit.
-#
-# Each change is classified using the only hardcoded knowledge left - a short
-# list of leaf names that trace back to an editable XR parameter:
-#   drift        - reconcilable by editing spec.parameters before commit; summed
-#                  into driftCount ("drive this to what you intend, then commit").
-#   sideEffects  - everything else a commit would do with no param knob (tag
-#                  rewrites, composition/provider-fixed fields, immutable fields
-#                  the provider will refuse to replace); summed into sideEffectCount.
-
-# Composition-resource-name for each importable logical key (+ access* when an
-# IAM principal is configured).
-_importCR = {
+# --- Generic import diff (delegated to the importkit module) ----------------
+# The whole diff/classify/report engine lives in importkit.k (provider-agnostic,
+# reusable). This composition only supplies the EKS-specific spec:
+#   registry     - importable logical key -> composition-resource-name (+ access*
+#                  when an IAM principal is configured).
+#   reconcilable - leaf field names backed by an editable XR parameter; matching
+#                  changes are reconcilable `drift`, everything else is a
+#                  `sideEffect` that committing applies with no param knob.
+_registry = {
     kubernetesCluster = "kubernetesCluster"
     nodeGroupPublic = "nodeGroupPublic"
     controlplaneRole = "controlplaneRole"
@@ -511,103 +495,15 @@ _importCR = {
     accessPolicyAssociation = crypto.sha256("accessPolicyAssociation-{}".format(principalArn))
 } if principalArn else {})
 
-# Leaf field names backed by an editable XR parameter (reconcilable drift).
-# Everything else that differs is an unreconcilable side effect of committing.
 _reconcilable = ["version", "authenticationMode", "instanceTypes", "desiredSize", "subnetIds"]
 
-# Crossplane cross-resource wiring / provider-computed mirrors: never real cloud
-# state, so skipping them avoids false positives.
-_skipKey = lambda k: str -> bool {
-    k.endswith("Ref") or k.endswith("Refs") or k.endswith("Selector") or k == "tagsAll"
-}
-
-# Bidirectional diff for open-keyed maps (tags): removals (live but not desired ->
-# committing strips them) and additions/updates (desired but not live / changed).
-# An omitted `desired` means "would be removed"; an omitted `observed` means
-# "would be added".
-_mapDiff = lambda fp: any, ap: any, path: str -> [any] {
-    _rm = [{field = "{}[{}]".format(path, k), observed = ap[k]} for k in ap if k not in fp]
-    _ch = [{field = "{}[{}]".format(path, k), desired = fp[k], observed = (ap[k] if k in ap else Undefined)} for k in fp if (k not in ap or ap[k] != fp[k])]
-    _rm + _ch
-}
-
-# Scalar (order-insensitive) list handling: AWS set-like fields (subnetIds,
-# managedPolicyArns, ...) come back from the cloud in a different order than the
-# composition declares them, which is not a real change. Compare such lists as
-# sets so ordering alone never registers as drift.
-_isScalar = lambda v: any -> bool {
-    typeof(v) in ["str", "int", "float", "bool"]
-}
-_scalarList = lambda v: any -> bool {
-    typeof(v) == "list" and (all e in v { _isScalar(e) })
-}
-_sameSet = lambda a: any, b: any -> bool {
-    len(a) == len(b) and (all e in a { e in b }) and (all e in b { e in a })
-}
-
-# JSON-string handling: many AWS fields (IAM assumeRolePolicy, addon
-# configurationValues, ...) are JSON serialized into a string. The composition
-# declares them pretty-printed / in one key order while the cloud returns them
-# compacted / reordered, so a raw string compare reports formatting-only diffs.
-# Detection is structural (no field-name list): a string is treated as JSON only
-# if it opens like a JSON object - `{"...` or `{}` - which also rejects lookalikes
-# such as Go templates (`{{ ... }}`). `[`-strings are intentionally NOT treated as
-# JSON (e.g. `[INFO] ...` is not an array) to keep json.decode from ever seeing
-# non-JSON (KCL has no way to recover from a decode error).
-_looksJson = lambda s: str -> bool {
-    regex.match(s, "^\\s*\\{\\s*(\"|\\})")
-}
-# Semantic equality via decode; KCL dict equality is key-order independent, so
-# this collapses whitespace and key-order differences.
-_jsonEqual = lambda a: str, b: str -> bool {
-    json.decode(a) == json.decode(b)
-}
-
-# Deep diff driven by desired (forProvider). Recurses into nested objects, but
-# only descends when the observed side is also an object - an absent observed
-# subtree means the cloud does not report it, which is not a committable change.
-_diffField = lambda k: str, dv: any, ov: any, path: str -> [any] {
-    _jsonPair = typeof(dv) == "str" and typeof(ov) == "str" and _looksJson(dv) and _looksJson(ov)
-    _listPair = _scalarList(dv) and _scalarList(ov)
-    _valueChanged = (not _jsonEqual(dv, ov)) if _jsonPair else ((not _sameSet(dv, ov)) if _listPair else (dv != ov))
-    _leafChanged = ov != Undefined and ov != None and _valueChanged
-    _leaf = [{field = path, desired = dv, observed = ov}] if _leafChanged else []
-    _obj = _deepDiff(dv, ov, path) if (typeof(dv) == "dict" and typeof(ov) == "dict") else _leaf
-    _mapDiff(dv or {}, ov or {}, path) if k == "tags" else _obj
-}
-_deepDiff = lambda desired: any, observed: any, prefix: str -> [any] {
-    sum([
-        _diffField(k, desired[k], (observed[k] if (typeof(observed) == "dict" and k in observed) else Undefined), (prefix + "." + k if prefix != "" else k))
-        for k in desired if not _skipKey(k)
-    ], [])
-}
-
-# Full change set for one composition resource (empty until it is observed).
-_diffFor = lambda cr: str -> [any] {
-    _fp = get(_ocds, cr + ".Resource.spec.forProvider", Undefined)
-    _ap = get(_ocds, cr + ".Resource.status.atProvider", Undefined)
-    _deepDiff(_fp, _ap, "") if (typeof(_fp) == "dict" and typeof(_ap) == "dict") else []
-}
-_isReconcilable = lambda field: str -> bool {
-    any p in _reconcilable { field.endswith(p) }
-}
-_resourceEntry = lambda key: str -> any {
-    _cr = _importCR[key]
-    _changes = _diffFor(_cr)
-    {
-        externalName = _importResources[key]
-        observed = (get(_ocds, _cr + ".Resource.status.atProvider", Undefined) != Undefined)
-        drift = [c for c in _changes if _isReconcilable(c.field)]
-        sideEffects = [c for c in _changes if not _isReconcilable(c.field)]
-    }
-}
-
-_reportKeys = [k for k in _importCR if k in _importResources]
-_resources = {k: _resourceEntry(k) for k in _reportKeys} if (_importActive and not _blockRender) else {}
-_driftLens = [len(_resources[k].drift) for k in _resources]
-_driftCount = sum(_driftLens) if len(_driftLens) > 0 else 0
-_sideEffectLens = [len(_resources[k].sideEffects) for k in _resources]
-_sideEffectCount = sum(_sideEffectLens) if len(_sideEffectLens) > 0 else 0
+_report = importkit.buildReport({
+    ocds = _ocds
+    importResources = _importResources
+    registry = _registry
+    reconcilable = _reconcilable
+    requiredKeys = _requiredKeys
+}) if _importActive else {missing = [], blockRender = False, resources = {}, driftCount = 0, sideEffectCount = 0}
 
 # Update the dxr status.
 _dxr = _dxr | {
@@ -626,15 +522,15 @@ _dxr = _dxr | {
             active = True
             commit = _commit
             phase = ("Committing" if _commit else "Observing")
-            missing = _missing
-        } | ({"error" = "import.resources is set but required external names are missing; render blocked until all are provided"} if _blockRender else {
-            resources = _resources
-            driftCount = _driftCount
-            sideEffectCount = _sideEffectCount
+            missing = _report.missing
+        } | ({"error" = "import.resources is set but required external names are missing; render blocked until all are provided"} if _report.blockRender else {
+            resources = _report.resources
+            driftCount = _report.driftCount
+            sideEffectCount = _report.sideEffectCount
         })
     } if _importActive else {})
 }
 
 _items += [_dxr]
 
-items = [_dxr] if _blockRender else _items
+items = [_dxr] if _report.blockRender else _items
