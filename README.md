@@ -85,10 +85,17 @@ lists the missing keys — a guardrail against a half-imported, half-created sta
   - **Addon `configurationValues`**, **`vpcConfig.endpointPrivateAccess`**, and any other field the
     composition fixes unconditionally.
 
-Scalar lists (subnet IDs, policy ARNs, ...) are compared **order-insensitively**, so a cloud that returns
-the same set in a different order does not register as a change. A `sideEffects` entry for an *immutable*
-field is a change the provider will **refuse** at commit (its refuse-to-replace guardrail) rather than
-apply — the report does not try to predict which fields those are.
+The diff normalizes two common sources of false positives, generically (no field-name list):
+
+- **Scalar lists** (subnet IDs, policy ARNs, ...) are compared **order-insensitively**, so a cloud that
+  returns the same set in a different order does not register as a change.
+- **JSON-string fields** (IAM `assumeRolePolicy`, addon `configurationValues`, ...) are compared
+  **semantically** — parsed and compared as data — so whitespace and key-order differences between the
+  composition's declaration and the cloud's serialization do not register. A string is detected as JSON
+  structurally (it opens like a JSON object), never by field name.
+
+A `sideEffects` entry for an *immutable* field is a change the provider will **refuse** at commit (its
+refuse-to-replace guardrail) rather than apply — the report does not try to predict which fields those are.
 
 ### Existing / remote network (`spec.parameters.network`)
 

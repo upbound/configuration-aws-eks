@@ -70,11 +70,29 @@ _observedCluster = eksv1beta1.Cluster {
     }
 }
 
+# A JSON-string field (addon configurationValues) that is semantically identical
+# but differently whitespaced AND key-ordered. Structural json-normalization must
+# treat this as NO change, so it must not appear in drift or sideEffects. Without
+# normalization it would inflate sideEffectCount to 7.
+_observedVpcCniAddon = {
+    apiVersion = "eks.aws.m.upbound.io/v1beta1"
+    kind = "Addon"
+    metadata = {
+        annotations = {
+            "crossplane.io/composition-resource-name" = "vpc-cni-addon"
+        }
+        name = "imported-vpc-cni"
+        namespace = "default"
+    }
+    spec.forProvider.configurationValues = '{"env": {"B": "2", "AWS_VPC_K8S_CNI_CUSTOM_NETWORK_CFG": "false"}}'
+    status.atProvider.configurationValues = '{\n  "env": {\n    "AWS_VPC_K8S_CNI_CUSTOM_NETWORK_CFG": "false",\n    "B": "2"\n  }\n}'
+}
+
 _test_observe = metav1alpha1.CompositionTest {
     metadata.name = "import-observe-drift"
     spec = _common | {
         xrPath = "tests/test-eks-import/xr-observe.yaml"
-        observedResources = [_observedCluster]
+        observedResources = [_observedCluster, _observedVpcCniAddon]
         assertResources = [
             # Cluster rendered observe-only with the external name pinned.
             eksv1beta1.Cluster {

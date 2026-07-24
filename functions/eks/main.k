@@ -5,6 +5,7 @@ import models.io.crossplane.kubernetesm.v1alpha1 as k8sv1alpha1
 import models.io.crossplane.helmm.v1beta1 as helmv1beta1
 import regex
 import crypto
+import json
 
 oxr = option("params").oxr # observed composite resource
 _ocds = option("params").ocds # observed composed resources
@@ -544,11 +545,31 @@ _sameSet = lambda a: any, b: any -> bool {
     len(a) == len(b) and (all e in a { e in b }) and (all e in b { e in a })
 }
 
+# JSON-string handling: many AWS fields (IAM assumeRolePolicy, addon
+# configurationValues, ...) are JSON serialized into a string. The composition
+# declares them pretty-printed / in one key order while the cloud returns them
+# compacted / reordered, so a raw string compare reports formatting-only diffs.
+# Detection is structural (no field-name list): a string is treated as JSON only
+# if it opens like a JSON object - `{"...` or `{}` - which also rejects lookalikes
+# such as Go templates (`{{ ... }}`). `[`-strings are intentionally NOT treated as
+# JSON (e.g. `[INFO] ...` is not an array) to keep json.decode from ever seeing
+# non-JSON (KCL has no way to recover from a decode error).
+_looksJson = lambda s: str -> bool {
+    regex.match(s, "^\\s*\\{\\s*(\"|\\})")
+}
+# Semantic equality via decode; KCL dict equality is key-order independent, so
+# this collapses whitespace and key-order differences.
+_jsonEqual = lambda a: str, b: str -> bool {
+    json.decode(a) == json.decode(b)
+}
+
 # Deep diff driven by desired (forProvider). Recurses into nested objects, but
 # only descends when the observed side is also an object - an absent observed
 # subtree means the cloud does not report it, which is not a committable change.
 _diffField = lambda k: str, dv: any, ov: any, path: str -> [any] {
-    _valueChanged = (not _sameSet(dv, ov)) if (_scalarList(dv) and _scalarList(ov)) else (dv != ov)
+    _jsonPair = typeof(dv) == "str" and typeof(ov) == "str" and _looksJson(dv) and _looksJson(ov)
+    _listPair = _scalarList(dv) and _scalarList(ov)
+    _valueChanged = (not _jsonEqual(dv, ov)) if _jsonPair else ((not _sameSet(dv, ov)) if _listPair else (dv != ov))
     _leafChanged = ov != Undefined and ov != None and _valueChanged
     _leaf = [{field = path, desired = dv, observed = ov}] if _leafChanged else []
     _obj = _deepDiff(dv, ov, path) if (typeof(dv) == "dict" and typeof(ov) == "dict") else _leaf
