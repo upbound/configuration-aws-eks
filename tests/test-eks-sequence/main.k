@@ -66,10 +66,6 @@ _test2 = metav1alpha1.CompositionTest {
     spec.observedResources: [
         eksv1beta1.Cluster {
             **resources._kubernetesCluster
-            metadata: {
-                name = "configuration-aws-eks-cluster"
-                namespace = "default"
-            }
             status: {
                 atProvider:{
                     id: "test-kubernetes-cluster"
@@ -89,10 +85,6 @@ _test3 = metav1alpha1.CompositionTest {
     spec.observedResources: _test2.spec.observedResources + [
         eksv1beta1.ClusterAuth {
             **resources._kubernetesClusterAuth
-            metadata: {
-                name = "configuration-aws-eks-clusterauth"
-                namespace = "default"
-            }
             status: {
                 atProvider: {
                     lastRefreshTime: "12345"
@@ -112,10 +104,6 @@ _test4 = metav1alpha1.CompositionTest {
     spec.observedResources: _test3.spec.observedResources + [
         eksv1beta1.Addon {
             **resources._vpcCniAddon
-            metadata: {
-                name = "configuration-aws-eks-vpccni"
-                namespace = "default"
-            }
             status: {
                 atProvider:{
                     id: "test-vpc-cni-addon"
@@ -135,10 +123,6 @@ _test5 = metav1alpha1.CompositionTest {
     spec.observedResources: _test4.spec.observedResources + [
         iamv1beta1.Role {
             **resources._ebsCSIDriverRole
-            metadata: {
-                name = "configuration-aws-eks-ebscsidriverrole"
-                namespace = "default"
-            }
             status: {
                 atProvider:{
                     arn: "arn:aws:iam::123456789012:role/test-ebs-csi-driver-role"
@@ -148,10 +132,6 @@ _test5 = metav1alpha1.CompositionTest {
         }
         eksv1beta1.PodIdentityAssociation {
             **resources._ebsCSIDriverPodIdentityAssociation
-            metadata: {
-                name = "configuration-aws-eks-ebscsipodidentity"
-                namespace = "default"
-            }
             status: {
                 atProvider:{
                     associationId: "test-pod-identity-association"
@@ -161,10 +141,6 @@ _test5 = metav1alpha1.CompositionTest {
         }
         eksv1beta1.NodeGroup {
             **resources._nodeGroupPublic
-            metadata: {
-                name = "configuration-aws-eks-nodegrouppublic"
-                namespace = "default"
-            }
             status: {
                 atProvider:{
                     id: "test-nodegroup-public"
