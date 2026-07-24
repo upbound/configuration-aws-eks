@@ -13,12 +13,32 @@ dcds = option("params").dcds # desired composed resources
 
 params = oxr.spec.parameters
 
+_import = params["import"] if "import" in params else {}
+_importResources = _import["resources"] if "resources" in _import else {}
+_importActive = len(_importResources) > 0
+_commit = _import["commit"] if "commit" in _import else False
+
+# Existing/remote network placement. When subnetIds is provided the cluster and node
+# group use these subnets directly (existing VPC / brownfield); otherwise the composition
+# selects subnets from a Network it composes (greenfield default).
+_network = params["network"] if "network" in params else {}
+_explicitSubnets = _network["subnetIds"] if "subnetIds" in _network else []
+_explicitNodeSubnets = _network["nodeSubnetIds"] if "nodeSubnetIds" in _network else _explicitSubnets
+_useExplicitNetwork = len(_explicitSubnets) > 0
+
 xrName = oxr.metadata.name
 
 _metadata = lambda name: str -> any {
     {
         annotations = {"krm.kcl.dev/composition-resource-name" = name}
     }
+}
+
+_extAnno = lambda key: str -> {str:str} {
+    {"crossplane.io/external-name" = _importResources[key]} if (_importActive and key in _importResources) else {}
+}
+_metaImp = lambda name: str, key: str -> any {
+    { annotations = {"krm.kcl.dev/composition-resource-name" = name} | _extAnno(key) }
 }
 
 ready = lambda o: any, statusPath = "atProvider" -> bool {
@@ -43,8 +63,11 @@ get = lambda x: any, y: str, d: any -> any {
     x[c] if len(p) == 1 and c in x else d if c not in x else get(x[c], y, d)
 }
 
+_mgmtPolicies = ["Observe", "LateInitialize"] if (_importActive and not _commit) else \
+    (["*"] if _importActive else (params.managementPolicies or ["*"]))
+
 _defaults = {
-    managementPolicies = params.managementPolicies or ["*"]
+    managementPolicies = _mgmtPolicies
     if params.providerConfigName:
         providerConfigRef = {
             kind = "ProviderConfig"
@@ -56,7 +79,7 @@ _items = []
 
 _items += [
     iamv1beta1.Role {
-        metadata = _metadata("controlplaneRole") | {
+        metadata = _metaImp("controlplaneRole", "controlplaneRole") | {
             labels: {
                 role = "controlplane"
             }
@@ -88,7 +111,7 @@ _items += [
         }
     }
     eksv1beta1.Cluster {
-        metadata = _metadata("kubernetesCluster")
+        metadata = _metaImp("kubernetesCluster", "kubernetesCluster")
         spec: _defaults | {
             forProvider = {
                 region = params.region
@@ -105,10 +128,16 @@ _items += [
                 }
                 vpcConfig = {
                     endpointPrivateAccess = True
-                    subnetIdSelector.matchLabels = {
-                        "networks.aws.platform.upbound.io/network-id" = params.id
-                        access = "public"
-                    }
+                    # Explicit subnets (existing VPC / brownfield) take precedence. Otherwise
+                    # select subnets from the composed Network by label (greenfield). We never
+                    # use the selector in import mode because brownfield subnets are unlabelled.
+                    if _useExplicitNetwork:
+                        subnetIds = _explicitSubnets
+                    if (not _useExplicitNetwork) and (not _importActive):
+                        subnetIdSelector.matchLabels = {
+                            "networks.aws.platform.upbound.io/network-id" = params.id
+                            access = "public"
+                        }
                 }
             }
         }
@@ -136,11 +165,14 @@ if clusterSecurityGroupId:
         }
     ]
 
-if ready(get(_ocds, "kubernetesCluster", "")) or exists("kubernetesClusterAuth"):
+if _importActive or ready(get(_ocds, "kubernetesCluster", "")) or exists("kubernetesClusterAuth"):
     _items += [
         eksv1beta1.ClusterAuth {
             metadata = _metadata("kubernetesClusterAuth")
             spec: _defaults | {
+                # ClusterAuth is a token generator with no importable external state and does
+                # not support observe-only management policies, so it always runs normally.
+                managementPolicies = params.managementPolicies or ["*"]
                 forProvider = {
                     region = params.region
                     clusterNameSelector.matchControllerRef = True
@@ -154,7 +186,7 @@ if ready(get(_ocds, "kubernetesCluster", "")) or exists("kubernetesClusterAuth")
 
 _items += [
     iamv1beta1.Role {
-        metadata = _metadata("nodegroupRole") | {
+        metadata = _metaImp("nodegroupRole", "nodegroupRole") | {
             labels = {
                 role = "nodegroup"
             }
@@ -193,10 +225,10 @@ _items += [
 nodeCount = oxr.spec.parameters.nodes.count or ""
 instanceType = oxr.spec.parameters.nodes.instanceType or ""
 
-if ready(get(_ocds, "vpc-cni-addon", "")) or exists("nodeGroupPublic"):
+if _importActive or ready(get(_ocds, "vpc-cni-addon", "")) or exists("nodeGroupPublic"):
     _items += [
         eksv1beta1.NodeGroup {
-            metadata = _metadata("nodeGroupPublic")
+            metadata = _metaImp("nodeGroupPublic", "nodeGroupPublic")
             spec: _defaults | {
                 initProvider = {
                     scalingConfig = {
@@ -217,10 +249,15 @@ if ready(get(_ocds, "vpc-cni-addon", "")) or exists("nodeGroupPublic"):
                         minSize = 1
                     }
                     instanceTypes = [instanceType]
-                    subnetIdSelector.matchLabels = {
-                        "networks.aws.platform.upbound.io/network-id" = params.id
-                        access = "public"
-                    }
+                    # Explicit node subnets (existing VPC / brownfield) take precedence; node group
+                    # subnets are immutable so for import they must match the existing node group.
+                    if _useExplicitNetwork:
+                        subnetIds = _explicitNodeSubnets
+                    if (not _useExplicitNetwork) and (not _importActive):
+                        subnetIdSelector.matchLabels = {
+                            "networks.aws.platform.upbound.io/network-id" = params.id
+                            access = "public"
+                        }
                 }
             }
         }
@@ -232,7 +269,7 @@ if principalArn:
     _items += [
         eksv1beta1.AccessEntry {
             # force recreate when principalArn changes
-            metadata = _metadata(crypto.sha256("accessEntry-{}".format(principalArn)))
+            metadata = _metaImp(crypto.sha256("accessEntry-{}".format(principalArn)), "accessEntry")
             spec: _defaults | {
                 forProvider = {
                     region = params.region
@@ -246,7 +283,7 @@ if principalArn:
         }
         eksv1beta1.AccessPolicyAssociation {
             # force recreate when principalArn changes
-            metadata = _metadata(crypto.sha256("accessPolicyAssociation-{}".format(principalArn)))
+            metadata = _metaImp(crypto.sha256("accessPolicyAssociation-{}".format(principalArn)), "accessPolicyAssociation")
             spec: _defaults | {
                 forProvider = {
                     region = params.region
@@ -265,10 +302,10 @@ if principalArn:
         }
     ]
 
-if ready(get(_ocds, "kubernetesClusterAuth", {})) or exists("vpc-cni-addon"):
+if _importActive or ready(get(_ocds, "kubernetesClusterAuth", {})) or exists("vpc-cni-addon"):
     _items += [
         eksv1beta1.Addon {
-            metadata = _metadata("vpc-cni-addon")
+            metadata = _metaImp("vpc-cni-addon", "vpcCniAddon")
             spec: _defaults | {
                 forProvider = {
                     region = params.region
@@ -283,7 +320,7 @@ if ready(get(_ocds, "kubernetesClusterAuth", {})) or exists("vpc-cni-addon"):
 
 _items += [
     iamv1beta1.Role {
-        metadata = _metadata("ebsCSIDriverRole") | {
+        metadata = _metaImp("ebsCSIDriverRole", "ebsCSIDriverRole") | {
             labels = {
                 role = "ebs-csi-driver"
             }
@@ -317,7 +354,7 @@ _items += [
 
 _items += [
     eksv1beta1.PodIdentityAssociation {
-        metadata = _metadata("ebsCSIDriverPodIdentityAssociation")
+        metadata = _metaImp("ebsCSIDriverPodIdentityAssociation", "ebsCSIDriverPodIdentityAssociation")
         spec: _defaults | {
             forProvider = {
                 region = params.region
@@ -335,10 +372,10 @@ _items += [
     }
 ]
 
-if (ready(get(_ocds, "ebsCSIDriverPodIdentityAssociation", "")) and ready(get(_ocds, "nodeGroupPublic", ""))) or exists("aws-ebs-csi-driver-addon"):
+if _importActive or (ready(get(_ocds, "ebsCSIDriverPodIdentityAssociation", "")) and ready(get(_ocds, "nodeGroupPublic", ""))) or exists("aws-ebs-csi-driver-addon"):
     _items += [
         eksv1beta1.Addon {
-            metadata = _metadata("aws-ebs-csi-driver-addon")
+            metadata = _metaImp("aws-ebs-csi-driver-addon", "ebsCsiAddon")
             spec: _defaults | {
                 forProvider = {
                     region = params.region
@@ -350,10 +387,10 @@ if (ready(get(_ocds, "ebsCSIDriverPodIdentityAssociation", "")) and ready(get(_o
         }
     ]
 
-if ready(get(_ocds, "nodeGroupPublic", "")) or exists("eks-pod-identity-agent"):
+if _importActive or ready(get(_ocds, "nodeGroupPublic", "")) or exists("eks-pod-identity-agent"):
     _items += [
         eksv1beta1.Addon {
-            metadata = _metadata("eks-pod-identity-agent-addon")
+            metadata = _metaImp("eks-pod-identity-agent-addon", "podIdentityAgentAddon")
             spec: _defaults | {
                 forProvider = {
                     region = params.region
@@ -417,6 +454,12 @@ _items += [{
         data: {}
 }]
 
+# Validation and drift detection for import mode
+_requiredKeys = ["controlplaneRole","nodegroupRole","ebsCSIDriverRole","kubernetesCluster","nodeGroupPublic","vpcCniAddon","ebsCsiAddon","podIdentityAgentAddon","ebsCSIDriverPodIdentityAssociation"]
+_requiredKeys += (["accessEntry","accessPolicyAssociation"] if principalArn else [])
+_missing = [k for k in _requiredKeys if k not in _importResources] if _importActive else []
+_blockRender = _importActive and len(_missing) > 0
+
 # Read the observed Cluster / NodeGroup atProvider blocks (None until they
 # sync). Surfacing these on the EKS status lets higher-level configurations
 # (e.g. configuration-aws-ctp) read the OIDC issuer, cluster ARN and running
@@ -431,6 +474,120 @@ _oidcIssuerUrl = (_oidcList[0]?.issuer or "") if len(_oidcList) > 0 else ""
 
 _ngInstanceTypes = _ngAtProvider?.instanceTypes or []
 
+# --- Generic import diff ----------------------------------------------------
+# spec.forProvider is the source of truth; status.atProvider is live cloud state.
+# Committing (managementPolicies -> ["*"]) converges live to desired, so the full
+# set of changes a commit would make is a deep diff of forProvider vs atProvider,
+# read straight off each observed managed resource. There is no per-field
+# curation: any leaf the composition declares that the cloud disagrees with shows
+# up automatically. Desired values are read from the OBSERVED resource's
+# forProvider, which already carries the provider-injected defaults (e.g. the
+# crossplane-* tags) and LateInitialized fields, so it reflects exactly what the
+# provider would enforce on commit.
+#
+# Each change is classified using the only hardcoded knowledge left - a short
+# list of leaf names that trace back to an editable XR parameter:
+#   drift        - reconcilable by editing spec.parameters before commit; summed
+#                  into driftCount ("drive this to what you intend, then commit").
+#   sideEffects  - everything else a commit would do with no param knob (tag
+#                  rewrites, composition/provider-fixed fields, immutable fields
+#                  the provider will refuse to replace); summed into sideEffectCount.
+
+# Composition-resource-name for each importable logical key (+ access* when an
+# IAM principal is configured).
+_importCR = {
+    kubernetesCluster = "kubernetesCluster"
+    nodeGroupPublic = "nodeGroupPublic"
+    controlplaneRole = "controlplaneRole"
+    nodegroupRole = "nodegroupRole"
+    ebsCSIDriverRole = "ebsCSIDriverRole"
+    vpcCniAddon = "vpc-cni-addon"
+    ebsCsiAddon = "aws-ebs-csi-driver-addon"
+    podIdentityAgentAddon = "eks-pod-identity-agent-addon"
+    ebsCSIDriverPodIdentityAssociation = "ebsCSIDriverPodIdentityAssociation"
+} | ({
+    accessEntry = crypto.sha256("accessEntry-{}".format(principalArn))
+    accessPolicyAssociation = crypto.sha256("accessPolicyAssociation-{}".format(principalArn))
+} if principalArn else {})
+
+# Leaf field names backed by an editable XR parameter (reconcilable drift).
+# Everything else that differs is an unreconcilable side effect of committing.
+_reconcilable = ["version", "authenticationMode", "instanceTypes", "desiredSize", "subnetIds"]
+
+# Crossplane cross-resource wiring / provider-computed mirrors: never real cloud
+# state, so skipping them avoids false positives.
+_skipKey = lambda k: str -> bool {
+    k.endswith("Ref") or k.endswith("Refs") or k.endswith("Selector") or k == "tagsAll"
+}
+
+# Bidirectional diff for open-keyed maps (tags): removals (live but not desired ->
+# committing strips them) and additions/updates (desired but not live / changed).
+# An omitted `desired` means "would be removed"; an omitted `observed` means
+# "would be added".
+_mapDiff = lambda fp: any, ap: any, path: str -> [any] {
+    _rm = [{field = "{}[{}]".format(path, k), observed = ap[k]} for k in ap if k not in fp]
+    _ch = [{field = "{}[{}]".format(path, k), desired = fp[k], observed = (ap[k] if k in ap else Undefined)} for k in fp if (k not in ap or ap[k] != fp[k])]
+    _rm + _ch
+}
+
+# Scalar (order-insensitive) list handling: AWS set-like fields (subnetIds,
+# managedPolicyArns, ...) come back from the cloud in a different order than the
+# composition declares them, which is not a real change. Compare such lists as
+# sets so ordering alone never registers as drift.
+_isScalar = lambda v: any -> bool {
+    typeof(v) in ["str", "int", "float", "bool"]
+}
+_scalarList = lambda v: any -> bool {
+    typeof(v) == "list" and (all e in v { _isScalar(e) })
+}
+_sameSet = lambda a: any, b: any -> bool {
+    len(a) == len(b) and (all e in a { e in b }) and (all e in b { e in a })
+}
+
+# Deep diff driven by desired (forProvider). Recurses into nested objects, but
+# only descends when the observed side is also an object - an absent observed
+# subtree means the cloud does not report it, which is not a committable change.
+_diffField = lambda k: str, dv: any, ov: any, path: str -> [any] {
+    _valueChanged = (not _sameSet(dv, ov)) if (_scalarList(dv) and _scalarList(ov)) else (dv != ov)
+    _leafChanged = ov != Undefined and ov != None and _valueChanged
+    _leaf = [{field = path, desired = dv, observed = ov}] if _leafChanged else []
+    _obj = _deepDiff(dv, ov, path) if (typeof(dv) == "dict" and typeof(ov) == "dict") else _leaf
+    _mapDiff(dv or {}, ov or {}, path) if k == "tags" else _obj
+}
+_deepDiff = lambda desired: any, observed: any, prefix: str -> [any] {
+    sum([
+        _diffField(k, desired[k], (observed[k] if (typeof(observed) == "dict" and k in observed) else Undefined), (prefix + "." + k if prefix != "" else k))
+        for k in desired if not _skipKey(k)
+    ], [])
+}
+
+# Full change set for one composition resource (empty until it is observed).
+_diffFor = lambda cr: str -> [any] {
+    _fp = get(_ocds, cr + ".Resource.spec.forProvider", Undefined)
+    _ap = get(_ocds, cr + ".Resource.status.atProvider", Undefined)
+    _deepDiff(_fp, _ap, "") if (typeof(_fp) == "dict" and typeof(_ap) == "dict") else []
+}
+_isReconcilable = lambda field: str -> bool {
+    any p in _reconcilable { field.endswith(p) }
+}
+_resourceEntry = lambda key: str -> any {
+    _cr = _importCR[key]
+    _changes = _diffFor(_cr)
+    {
+        externalName = _importResources[key]
+        observed = (get(_ocds, _cr + ".Resource.status.atProvider", Undefined) != Undefined)
+        drift = [c for c in _changes if _isReconcilable(c.field)]
+        sideEffects = [c for c in _changes if not _isReconcilable(c.field)]
+    }
+}
+
+_reportKeys = [k for k in _importCR if k in _importResources]
+_resources = {k: _resourceEntry(k) for k in _reportKeys} if (_importActive and not _blockRender) else {}
+_driftLens = [len(_resources[k].drift) for k in _resources]
+_driftCount = sum(_driftLens) if len(_driftLens) > 0 else 0
+_sideEffectLens = [len(_resources[k].sideEffects) for k in _resources]
+_sideEffectCount = sum(_sideEffectLens) if len(_sideEffectLens) > 0 else 0
+
 # Update the dxr status.
 _dxr = _dxr | {
     status: {
@@ -443,9 +600,20 @@ _dxr = _dxr | {
                 instanceType: _ngInstanceTypes[0] if len(_ngInstanceTypes) > 0 else ""
             }
         }
-    }
+    } | ({
+        "import" = {
+            active = True
+            commit = _commit
+            phase = ("Committing" if _commit else "Observing")
+            missing = _missing
+        } | ({"error" = "import.resources is set but required external names are missing; render blocked until all are provided"} if _blockRender else {
+            resources = _resources
+            driftCount = _driftCount
+            sideEffectCount = _sideEffectCount
+        })
+    } if _importActive else {})
 }
 
 _items += [_dxr]
 
-items = _items
+items = [_dxr] if _blockRender else _items

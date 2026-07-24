@@ -30,6 +30,54 @@ spec:
                   region:
                     type: string
                     description: Region is the region you'd like your resource to be created in.
+                  network:
+                    type: object
+                    description: >
+                      Existing/remote network placement. When subnetIds is set, the cluster and node
+                      group are placed in these existing subnets directly instead of selecting subnets
+                      from a Network composed by this platform (the default greenfield behavior). Set this
+                      to run in a pre-existing VPC or to adopt a brownfield cluster (see spec.parameters.import).
+                    properties:
+                      subnetIds:
+                        type: array
+                        items:
+                          type: string
+                        description: >
+                          Subnet IDs for the EKS cluster control-plane ENIs (should span >=2 AZs).
+                      nodeSubnetIds:
+                        type: array
+                        items:
+                          type: string
+                        description: >
+                          Subnet IDs for worker nodes. Defaults to subnetIds when unset. EKS node group
+                          subnets are immutable, so for import these must match the existing node group.
+                  import:
+                    type: object
+                    description: >
+                      Brownfield import controls. Use to adopt EKS resources that already exist in AWS
+                      (created out-of-band) without recreating them. Lifecycle: (1) set resources with
+                      commit=false to observe existing infrastructure and review status.import drift;
+                      (2) reconcile parameters until drift is empty; (3) set commit=true to take full
+                      management; (4) drop this block once the migration is complete.
+                    properties:
+                      resources:
+                        type: object
+                        additionalProperties:
+                          type: string
+                        description: >
+                          Map of composition resource key -> crossplane.io/external-name of the existing
+                          AWS resource. When non-empty, ALL importable resources the composition renders
+                          must be present, otherwise the render is blocked (see status.import.missing).
+                          Keys: controlplaneRole, nodegroupRole, ebsCSIDriverRole, kubernetesCluster,
+                          nodeGroupPublic, vpcCniAddon, ebsCsiAddon, podIdentityAgentAddon,
+                          ebsCSIDriverPodIdentityAssociation, accessEntry, accessPolicyAssociation.
+                      commit:
+                        type: boolean
+                        default: false
+                        description: >
+                          When false (default) every managed resource is set to observe-only
+                          (["Observe","LateInitialize"]) so nothing in AWS is mutated. When true the
+                          management policies switch to ["*"] to complete the migration.
                   accessConfig:
                     type: object
                     properties:
@@ -106,6 +154,13 @@ spec:
               properties:
                 eks:
                   description: Freeform field containing status information for eks
+                  type: object
+                  x-kubernetes-preserve-unknown-fields: true
+                import:
+                  description: >
+                    Import phase report. Contains the resolved external names, any missing keys that
+                    block the render, and a per-resource drift report (composition-desired forProvider
+                    vs live status.atProvider) that shows what committing would change.
                   type: object
                   x-kubernetes-preserve-unknown-fields: true
               type: object
