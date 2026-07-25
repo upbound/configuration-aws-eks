@@ -25,6 +25,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 
 	helmv1beta1 "dev.upbound.io/models/io/crossplane/m/helm/v1beta1"
 	kubernetesv1alpha1 "dev.upbound.io/models/io/crossplane/m/kubernetes/v1alpha1"
@@ -79,6 +80,29 @@ func readyConditions() []map[string]any {
 // `**resources._x { status: {...} }` spread used to build observedResources.
 func observedWithStatus(base any, atProvider map[string]any) map[string]any {
 	m := toMap(base)
+	// The render engine `up test` adopted in up v0.49 (PR upbound/up#1524) only
+	// hands an observed resource to the function when it carries a concrete,
+	// valid metadata.name AND metadata.namespace (these are namespaced managed
+	// resources). A generateName-only observed resource is dropped, so the
+	// readiness gate (ready()) never sees it and the gated downstream resources
+	// never render. Give each observed resource a stable name derived from its
+	// composition-resource-name annotation (lowercased to a valid RFC1123 name)
+	// plus the default namespace, matching how the import and
+	// cluster-security-group suites already set a concrete name+namespace.
+	if meta, ok := m["metadata"].(map[string]any); ok {
+		if meta["name"] == nil {
+			crName := ""
+			if ann, ok := meta["annotations"].(map[string]any); ok {
+				if s, ok := ann["crossplane.io/composition-resource-name"].(string); ok {
+					crName = s
+				}
+			}
+			meta["name"] = strings.ToLower(genName + crName)
+		}
+		if meta["namespace"] == nil {
+			meta["namespace"] = defaultNS
+		}
+	}
 	m["status"] = map[string]any{
 		"atProvider": atProvider,
 		"conditions": readyConditions(),
