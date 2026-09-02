@@ -21,6 +21,25 @@ _metadata = lambda name: str -> any {
     }
 }
 
+# Identity tags. This configuration's EKS cluster and IAM roles are
+# name-as-identifier types, so their AWS identifier is whatever metadata.name
+# Crossplane assigned - a random suffix unless spec.parameters.naming is
+# Deterministic. A control plane holding no prior state therefore cannot find
+# them again, and the PodIdentityAssociation's identifier is opaque even in
+# principle. These two tags are the stable key: `ctp-id` says which EKS XR the
+# resource belongs to, `ctp-resource` says which composed resource it is. A
+# consumer discovers them with the Resource Groups Tagging API and feeds the
+# result back through `externalNames` to adopt rather than duplicate.
+#
+# Note provider-upjet-aws already adds a `crossplane-name` tag, but its value is
+# the randomly generated managed-resource name, so it cannot serve this purpose.
+_identityTags = lambda name: str -> any {
+    {
+        "upbound.io/ctp-id" = params.id
+        "upbound.io/ctp-resource" = name
+    }
+}
+
 ready = lambda o: any, statusPath = "atProvider" -> bool {
     status = o?.Resource?.status
     objstatus = status?.conditions or []
@@ -64,6 +83,7 @@ _items += [
         spec: _defaults | {
             forProvider = {
                 forceDetachPolicies = True
+                tags = _identityTags("controlplaneRole")
                 managedPolicyArns = [
                     "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
                 ]
@@ -92,6 +112,7 @@ _items += [
         spec: _defaults | {
             forProvider = {
                 region = params.region
+                tags = _identityTags("kubernetesCluster")
                 version = params.version
                 accessConfig = {
                     authenticationMode = params.accessConfig.authenticationMode
@@ -162,6 +183,7 @@ _items += [
         spec: _defaults | {
             forProvider = {
                 forceDetachPolicies = True
+                tags = _identityTags("nodegroupRole")
                 managedPolicyArns = [
                     "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
                     "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
@@ -205,6 +227,7 @@ if ready(get(_ocds, "vpc-cni-addon", "")) or exists("nodeGroupPublic"):
                 }
                 forProvider = {
                     region = params.region
+                    tags = _identityTags("nodeGroupPublic")
                     clusterNameSelector.matchControllerRef = True
                     nodeRoleArnSelector = {
                         matchControllerRef = True
@@ -291,6 +314,7 @@ _items += [
         spec: _defaults | {
             forProvider = {
                 forceDetachPolicies = True
+                tags = _identityTags("ebsCSIDriverRole")
                 managedPolicyArns = [
                     "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
                 ]
@@ -321,6 +345,7 @@ _items += [
         spec: _defaults | {
             forProvider = {
                 region = params.region
+                tags = _identityTags("ebsCSIDriverPodIdentityAssociation")
                 clusterNameSelector.matchControllerRef = True
                 namespace = "kube-system"
                 serviceAccount = "ebs-csi-controller-sa"

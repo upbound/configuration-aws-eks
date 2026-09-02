@@ -18,6 +18,10 @@ _kubernetesCluster = eksv1beta1.Cluster {
         managementPolicies = ["*"]
         forProvider = {
             region = "us-west-2"
+            tags = {
+                "upbound.io/ctp-id" = "configuration-aws-eks"
+                "upbound.io/ctp-resource" = "kubernetesCluster"
+            }
             accessConfig = {
                 authenticationMode = "API_AND_CONFIG_MAP"
             }
@@ -93,6 +97,10 @@ _roleControlPlane = iamv1beta1.Role {
   }
 """
             forceDetachPolicies = True
+            tags = {
+                "upbound.io/ctp-id" = "configuration-aws-eks"
+                "upbound.io/ctp-resource" = "controlplaneRole"
+            }
             managedPolicyArns = [
                 "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
             ]
@@ -136,6 +144,10 @@ _roleNodeGroup = iamv1beta1.Role {
   }
 """
             forceDetachPolicies = True
+            tags = {
+                "upbound.io/ctp-id" = "configuration-aws-eks"
+                "upbound.io/ctp-resource" = "nodegroupRole"
+            }
             managedPolicyArns = [
                 "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
                 "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
@@ -270,6 +282,10 @@ _nodeGroupPublic = eksv1beta1.NodeGroup {
         managementPolicies = ["*"]
         forProvider = {
             region = "us-west-2"
+            tags = {
+                "upbound.io/ctp-id" = "configuration-aws-eks"
+                "upbound.io/ctp-resource" = "nodeGroupPublic"
+            }
             clusterNameSelector.matchControllerRef = True
             nodeRoleArnSelector = {
                 matchControllerRef = True
@@ -333,6 +349,10 @@ _ebsCSIDriverRole = iamv1beta1.Role {
 }
 """
             forceDetachPolicies = True
+            tags = {
+                "upbound.io/ctp-id" = "configuration-aws-eks"
+                "upbound.io/ctp-resource" = "ebsCSIDriverRole"
+            }
             managedPolicyArns = [
                 "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
             ]
@@ -361,6 +381,10 @@ _ebsCSIDriverPodIdentityAssociation = eksv1beta1.PodIdentityAssociation {
         managementPolicies = ["*"]
         forProvider = {
             region = "us-west-2"
+            tags = {
+                "upbound.io/ctp-id" = "configuration-aws-eks"
+                "upbound.io/ctp-resource" = "ebsCSIDriverPodIdentityAssociation"
+            }
             clusterNameSelector = {
                 matchControllerRef = True
             }
