@@ -17,6 +17,38 @@ xrName = oxr.metadata.name
 
 _externalNames = params.externalNames or {}
 
+# Every composition-resource-name this function can emit. The AccessEntry and
+# AccessPolicyAssociation names are sha256 digests derived from
+# parameters.iam.principalArn, so the valid set depends on the caller and cannot
+# be enumerated in the XRD schema - which is why externalNames is an open map and
+# is validated here instead.
+_principalArnForKeys = params?.iam?.principalArn or False
+_accessExternalNameKeys = [
+    crypto.sha256("accessEntry-{}".format(_principalArnForKeys)),
+    crypto.sha256("accessPolicyAssociation-{}".format(_principalArnForKeys)),
+] if _principalArnForKeys else []
+_externalNameKeys = [
+    "controlplaneRole",
+    "kubernetesCluster",
+    "clusterSecurityGroupImport",
+    "kubernetesClusterAuth",
+    "nodegroupRole",
+    "nodeGroupPublic",
+    "vpc-cni-addon",
+    "ebsCSIDriverRole",
+    "ebsCSIDriverPodIdentityAssociation",
+    "aws-ebs-csi-driver-addon",
+    "eks-pod-identity-agent-addon",
+    "providerConfig-kubernetes",
+    "providerConfig-helm",
+] + _accessExternalNameKeys
+
+# Fail loudly on an unknown key. Silently ignoring one would leave that resource
+# unadopted and create a duplicate in AWS, the exact failure adoption prevents.
+_unknownExternalNames = [k for k in _externalNames if k not in _externalNameKeys]
+
+assert len(_unknownExternalNames) == 0, "spec.parameters.externalNames has unknown key(s) ${_unknownExternalNames}; valid keys for this EKS are ${_externalNameKeys}"
+
 # Every composed resource routes its annotations through here, so injecting the
 # external-name at this single point covers all of them. Three resources spread
 # these annotations into a map of their own and then add keys after the spread
