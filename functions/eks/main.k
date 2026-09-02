@@ -52,6 +52,24 @@ _identityTags = lambda name: str -> any {
     }
 }
 
+# Deterministic naming, opt-in. The EKS cluster and the IAM roles are
+# name-as-identifier types and the node group is templated from
+# {cluster_name}:{name}, so metadata.name IS the AWS identifier for all of them.
+# Setting it makes adoption possible without any AWS query.
+#
+# DESTRUCTIVE to change on an existing cluster: Crossplane cannot rename a
+# composed resource, so flipping to Deterministic deletes the live EKS cluster
+# and builds a replacement. The Generated default exists to make sure a version
+# bump alone can never do that.
+_deterministic = (params.naming or "Generated") == "Deterministic"
+
+_named = lambda compositionName: str, stableName: str -> any {
+    _metadata(compositionName) | {
+        if _deterministic:
+            name = stableName
+    }
+}
+
 ready = lambda o: any, statusPath = "atProvider" -> bool {
     status = o?.Resource?.status
     objstatus = status?.conditions or []
@@ -87,7 +105,7 @@ _items = []
 
 _items += [
     iamv1beta1.Role {
-        metadata = _metadata("controlplaneRole") | {
+        metadata = _named("controlplaneRole", "{}-eks-controlplane".format(params.id)) | {
             labels: {
                 role = "controlplane"
             }
@@ -120,7 +138,7 @@ _items += [
         }
     }
     eksv1beta1.Cluster {
-        metadata = _metadata("kubernetesCluster")
+        metadata = _named("kubernetesCluster", "{}-eks".format(params.id))
         spec: _defaults | {
             forProvider = {
                 region = params.region
@@ -187,7 +205,7 @@ if ready(get(_ocds, "kubernetesCluster", "")) or exists("kubernetesClusterAuth")
 
 _items += [
     iamv1beta1.Role {
-        metadata = _metadata("nodegroupRole") | {
+        metadata = _named("nodegroupRole", "{}-eks-nodegroup".format(params.id)) | {
             labels = {
                 role = "nodegroup"
             }
@@ -230,7 +248,7 @@ instanceType = oxr.spec.parameters.nodes.instanceType or ""
 if ready(get(_ocds, "vpc-cni-addon", "")) or exists("nodeGroupPublic"):
     _items += [
         eksv1beta1.NodeGroup {
-            metadata = _metadata("nodeGroupPublic")
+            metadata = _named("nodeGroupPublic", "{}-ng-public".format(params.id))
             spec: _defaults | {
                 initProvider = {
                     scalingConfig = {
@@ -318,7 +336,7 @@ if ready(get(_ocds, "kubernetesClusterAuth", {})) or exists("vpc-cni-addon"):
 
 _items += [
     iamv1beta1.Role {
-        metadata = _metadata("ebsCSIDriverRole") | {
+        metadata = _named("ebsCSIDriverRole", "{}-ebs-csi".format(params.id)) | {
             labels = {
                 role = "ebs-csi-driver"
             }

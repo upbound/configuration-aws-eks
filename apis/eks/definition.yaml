@@ -65,6 +65,28 @@ spec:
                     type: object
                     additionalProperties:
                       type: string
+                  naming:
+                    description: >-
+                      How composed resources are named. Generated (the default)
+                      lets Crossplane assign {xr-name}-{random}, which is what
+                      every existing deployment uses. Deterministic derives the
+                      name from id, which makes the EKS cluster, node group and
+                      IAM roles adoptable by a control plane that holds no prior
+                      state about them, because their AWS identifier follows
+                      their Kubernetes name. It also makes the EKS addons, access
+                      entry and access policy association deterministic, since
+                      their identifiers are templated from the cluster name.
+                      WARNING: changing this on a live cluster is DESTRUCTIVE.
+                      Crossplane cannot rename a composed resource, so switching
+                      modes deletes the existing EKS cluster, node group and IAM
+                      roles and creates replacements, destroying every workload
+                      on the cluster. Set it at creation time, or migrate only
+                      during a planned maintenance window.
+                    type: string
+                    enum:
+                    - Generated
+                    - Deterministic
+                    default: Generated
                   iam:
                     type: object
                     description: IAM configuration to connect as ClusterAdmin.
