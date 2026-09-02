@@ -45,6 +45,26 @@ spec:
                     default:
                       bootstrapClusterCreatorAdminPermissions: true
                       authenticationMode: CONFIG_MAP
+                  externalNames:
+                    description: >-
+                      Optional map of composition-resource-name to
+                      crossplane.io/external-name, used to adopt existing AWS
+                      resources instead of creating new ones. The EKS cluster and
+                      the IAM roles are name-as-identifier types, so setting
+                      naming to Deterministic is usually the better answer for
+                      them; this map is for resources whose identifier AWS
+                      assigns and nobody can predict, above all the
+                      PodIdentityAssociation. Keys are the
+                      krm.kcl.dev/composition-resource-name values
+                      ("kubernetesCluster", "controlplaneRole", "nodegroupRole",
+                      "ebsCSIDriverRole", "nodeGroupPublic",
+                      "ebsCSIDriverPodIdentityAssociation", "vpc-cni-addon",
+                      "aws-ebs-csi-driver-addon",
+                      "eks-pod-identity-agent-addon"). Resources not listed are
+                      unaffected. Omit this field for normal use.
+                    type: object
+                    additionalProperties:
+                      type: string
                   iam:
                     type: object
                     description: IAM configuration to connect as ClusterAdmin.

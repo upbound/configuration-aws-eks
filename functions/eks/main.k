@@ -15,9 +15,21 @@ params = oxr.spec.parameters
 
 xrName = oxr.metadata.name
 
+_externalNames = params.externalNames or {}
+
+# Every composed resource routes its annotations through here, so injecting the
+# external-name at this single point covers all of them. Three resources spread
+# these annotations into a map of their own and then add keys after the spread
+# (clusterSecurityGroupImport, and both ProviderConfigs); a later key wins in a
+# KCL dict literal, which is deliberate - the cluster security group's observed
+# id must override anything a caller injects.
 _metadata = lambda name: str -> any {
     {
-        annotations = {"krm.kcl.dev/composition-resource-name" = name}
+        annotations = {
+            "krm.kcl.dev/composition-resource-name" = name
+            if name in _externalNames:
+                "crossplane.io/external-name" = _externalNames[name]
+        }
     }
 }
 
