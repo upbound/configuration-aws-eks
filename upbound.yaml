@@ -3,6 +3,10 @@ kind: Project
 metadata:
   name: configuration-aws-eks
 spec:
+  apiDependencies:
+  - http:
+      url: https://raw.githubusercontent.com/crossplane/crossplane/refs/tags/v2.1.4/cluster/crds/apiextensions.crossplane.io_managedresourceactivationpolicies.yaml
+    type: crd
   dependsOn:
   - apiVersion: pkg.crossplane.io/v1
     kind: Configuration

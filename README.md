@@ -38,3 +38,11 @@ This repository serves as a foundational step. To enhance your configuration, co
 2. editing the existing API definition to your needs
 
 To learn more about how to build APIs for your managed control planes in Upbound, read the guide on [Upbound's docs](https://docs.upbound.io/).
+## Managed Resource Activation Policy
+
+This configuration includes a `ManagedResourceActivationPolicy` (MRAP) that enables only the required CRDs from dependent providers. If you're running Crossplane without a default activation policy, this ensures that only the necessary CRDs are activated, reducing resource overhead and improving control plane performance.
+
+To view the MRAP:
+```bash
+kubectl get managedresourceactivationpolicy configuration-aws-eks -o yaml
+```

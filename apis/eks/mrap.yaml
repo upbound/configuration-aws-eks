@@ -1,0 +1,15 @@
+apiVersion: apiextensions.crossplane.io/v1alpha1
+kind: ManagedResourceActivationPolicy
+metadata:
+  name: configuration-aws-eks
+spec:
+  activate:
+  - accessentries.eks.aws.m.upbound.io
+  - accesspolicyassociations.eks.aws.m.upbound.io
+  - addons.eks.aws.m.upbound.io
+  - clusterauths.eks.aws.m.upbound.io
+  - clusters.eks.aws.m.upbound.io
+  - nodegroups.eks.aws.m.upbound.io
+  - podidentityassociations.eks.aws.m.upbound.io
+  - roles.iam.aws.m.upbound.io
+  - securitygroups.ec2.aws.m.upbound.io
