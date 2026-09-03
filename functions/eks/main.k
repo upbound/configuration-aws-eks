@@ -15,9 +15,90 @@ params = oxr.spec.parameters
 
 xrName = oxr.metadata.name
 
+_externalNames = params.externalNames or {}
+
+# Every composition-resource-name this function can emit. The AccessEntry and
+# AccessPolicyAssociation names are sha256 digests derived from
+# parameters.iam.principalArn, so the valid set depends on the caller and cannot
+# be enumerated in the XRD schema - which is why externalNames is an open map and
+# is validated here instead.
+_principalArnForKeys = params?.iam?.principalArn or False
+_accessExternalNameKeys = [
+    crypto.sha256("accessEntry-{}".format(_principalArnForKeys)),
+    crypto.sha256("accessPolicyAssociation-{}".format(_principalArnForKeys)),
+] if _principalArnForKeys else []
+_externalNameKeys = [
+    "controlplaneRole",
+    "kubernetesCluster",
+    "clusterSecurityGroupImport",
+    "kubernetesClusterAuth",
+    "nodegroupRole",
+    "nodeGroupPublic",
+    "vpc-cni-addon",
+    "ebsCSIDriverRole",
+    "ebsCSIDriverPodIdentityAssociation",
+    "aws-ebs-csi-driver-addon",
+    "eks-pod-identity-agent-addon",
+    "providerConfig-kubernetes",
+    "providerConfig-helm",
+] + _accessExternalNameKeys
+
+# Fail loudly on an unknown key. Silently ignoring one would leave that resource
+# unadopted and create a duplicate in AWS, the exact failure adoption prevents.
+_unknownExternalNames = [k for k in _externalNames if k not in _externalNameKeys]
+
+assert len(_unknownExternalNames) == 0, "spec.parameters.externalNames has unknown key(s) ${_unknownExternalNames}; valid keys for this EKS are ${_externalNameKeys}"
+
+# Every composed resource routes its annotations through here, so injecting the
+# external-name at this single point covers all of them. Three resources spread
+# these annotations into a map of their own and then add keys after the spread
+# (clusterSecurityGroupImport, and both ProviderConfigs); a later key wins in a
+# KCL dict literal, which is deliberate - the cluster security group's observed
+# id must override anything a caller injects.
 _metadata = lambda name: str -> any {
     {
-        annotations = {"krm.kcl.dev/composition-resource-name" = name}
+        annotations = {
+            "krm.kcl.dev/composition-resource-name" = name
+            if name in _externalNames:
+                "crossplane.io/external-name" = _externalNames[name]
+        }
+    }
+}
+
+# Identity tags. This configuration's EKS cluster and IAM roles are
+# name-as-identifier types, so their AWS identifier is whatever metadata.name
+# Crossplane assigned - a random suffix unless spec.parameters.naming is
+# Deterministic. A control plane holding no prior state therefore cannot find
+# them again, and the PodIdentityAssociation's identifier is opaque even in
+# principle. These two tags are the stable key: `ctp-id` says which EKS XR the
+# resource belongs to, `ctp-resource` says which composed resource it is. A
+# consumer discovers them with the Resource Groups Tagging API and feeds the
+# result back through `externalNames` to adopt rather than duplicate.
+#
+# Note provider-upjet-aws already adds a `crossplane-name` tag, but its value is
+# the randomly generated managed-resource name, so it cannot serve this purpose.
+_identityTags = lambda name: str -> any {
+    {
+        "upbound.io/ctp-id" = params.id
+        "upbound.io/ctp-resource" = name
+    }
+}
+
+# Deterministic naming, opt-in. The EKS cluster and the IAM roles are
+# name-as-identifier types and the node group is templated from
+# {cluster_name}:{name}, so metadata.name IS the AWS identifier for all of them.
+# Setting it makes adoption possible without any AWS query.
+#
+# DESTRUCTIVE to change on an existing cluster: Crossplane cannot rename a
+# composed resource, so flipping to Deterministic deletes the live EKS cluster
+# and builds a replacement. The Generated default exists to make sure a version
+# bump alone can never do that.
+_deterministic = (params.naming or "Generated") == "Deterministic"
+
+_named = lambda compositionName: str, stableName: str -> any {
+    _metadata(compositionName) | {
+        if _deterministic:
+            name = stableName
     }
 }
 
@@ -56,7 +137,7 @@ _items = []
 
 _items += [
     iamv1beta1.Role {
-        metadata = _metadata("controlplaneRole") | {
+        metadata = _named("controlplaneRole", "{}-eks-controlplane".format(params.id)) | {
             labels: {
                 role = "controlplane"
             }
@@ -64,6 +145,7 @@ _items += [
         spec: _defaults | {
             forProvider = {
                 forceDetachPolicies = True
+                tags = _identityTags("controlplaneRole")
                 managedPolicyArns = [
                     "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
                 ]
@@ -88,10 +170,11 @@ _items += [
         }
     }
     eksv1beta1.Cluster {
-        metadata = _metadata("kubernetesCluster")
+        metadata = _named("kubernetesCluster", "{}-eks".format(params.id))
         spec: _defaults | {
             forProvider = {
                 region = params.region
+                tags = _identityTags("kubernetesCluster")
                 version = params.version
                 accessConfig = {
                     authenticationMode = params.accessConfig.authenticationMode
@@ -154,7 +237,7 @@ if ready(get(_ocds, "kubernetesCluster", "")) or exists("kubernetesClusterAuth")
 
 _items += [
     iamv1beta1.Role {
-        metadata = _metadata("nodegroupRole") | {
+        metadata = _named("nodegroupRole", "{}-eks-nodegroup".format(params.id)) | {
             labels = {
                 role = "nodegroup"
             }
@@ -162,6 +245,7 @@ _items += [
         spec: _defaults | {
             forProvider = {
                 forceDetachPolicies = True
+                tags = _identityTags("nodegroupRole")
                 managedPolicyArns = [
                     "arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy"
                     "arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy"
@@ -196,7 +280,7 @@ instanceType = oxr.spec.parameters.nodes.instanceType or ""
 if ready(get(_ocds, "vpc-cni-addon", "")) or exists("nodeGroupPublic"):
     _items += [
         eksv1beta1.NodeGroup {
-            metadata = _metadata("nodeGroupPublic")
+            metadata = _named("nodeGroupPublic", "{}-ng-public".format(params.id))
             spec: _defaults | {
                 initProvider = {
                     scalingConfig = {
@@ -205,6 +289,7 @@ if ready(get(_ocds, "vpc-cni-addon", "")) or exists("nodeGroupPublic"):
                 }
                 forProvider = {
                     region = params.region
+                    tags = _identityTags("nodeGroupPublic")
                     clusterNameSelector.matchControllerRef = True
                     nodeRoleArnSelector = {
                         matchControllerRef = True
@@ -283,7 +368,7 @@ if ready(get(_ocds, "kubernetesClusterAuth", {})) or exists("vpc-cni-addon"):
 
 _items += [
     iamv1beta1.Role {
-        metadata = _metadata("ebsCSIDriverRole") | {
+        metadata = _named("ebsCSIDriverRole", "{}-ebs-csi".format(params.id)) | {
             labels = {
                 role = "ebs-csi-driver"
             }
@@ -291,6 +376,7 @@ _items += [
         spec: _defaults | {
             forProvider = {
                 forceDetachPolicies = True
+                tags = _identityTags("ebsCSIDriverRole")
                 managedPolicyArns = [
                     "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
                 ]
@@ -321,6 +407,7 @@ _items += [
         spec: _defaults | {
             forProvider = {
                 region = params.region
+                tags = _identityTags("ebsCSIDriverPodIdentityAssociation")
                 clusterNameSelector.matchControllerRef = True
                 namespace = "kube-system"
                 serviceAccount = "ebs-csi-controller-sa"

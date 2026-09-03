@@ -45,6 +45,48 @@ spec:
                     default:
                       bootstrapClusterCreatorAdminPermissions: true
                       authenticationMode: CONFIG_MAP
+                  externalNames:
+                    description: >-
+                      Optional map of composition-resource-name to
+                      crossplane.io/external-name, used to adopt existing AWS
+                      resources instead of creating new ones. The EKS cluster and
+                      the IAM roles are name-as-identifier types, so setting
+                      naming to Deterministic is usually the better answer for
+                      them; this map is for resources whose identifier AWS
+                      assigns and nobody can predict, above all the
+                      PodIdentityAssociation. Keys are the
+                      krm.kcl.dev/composition-resource-name values
+                      ("kubernetesCluster", "controlplaneRole", "nodegroupRole",
+                      "ebsCSIDriverRole", "nodeGroupPublic",
+                      "ebsCSIDriverPodIdentityAssociation", "vpc-cni-addon",
+                      "aws-ebs-csi-driver-addon",
+                      "eks-pod-identity-agent-addon"). Resources not listed are
+                      unaffected. Omit this field for normal use.
+                    type: object
+                    additionalProperties:
+                      type: string
+                  naming:
+                    description: >-
+                      How composed resources are named. Generated (the default)
+                      lets Crossplane assign {xr-name}-{random}, which is what
+                      every existing deployment uses. Deterministic derives the
+                      name from id, which makes the EKS cluster, node group and
+                      IAM roles adoptable by a control plane that holds no prior
+                      state about them, because their AWS identifier follows
+                      their Kubernetes name. It also makes the EKS addons, access
+                      entry and access policy association deterministic, since
+                      their identifiers are templated from the cluster name.
+                      WARNING: changing this on a live cluster is DESTRUCTIVE.
+                      Crossplane cannot rename a composed resource, so switching
+                      modes deletes the existing EKS cluster, node group and IAM
+                      roles and creates replacements, destroying every workload
+                      on the cluster. Set it at creation time, or migrate only
+                      during a planned maintenance window.
+                    type: string
+                    enum:
+                    - Generated
+                    - Deterministic
+                    default: Generated
                   iam:
                     type: object
                     description: IAM configuration to connect as ClusterAdmin.
@@ -53,18 +95,18 @@ spec:
                         description: The principal ARN to connect as ClusterAdmin.
                         type: string
                   managementPolicies:
-                      description: ManagementPolicies for AWS EC2 resources. Defaults to ["*"] which includes all operations (Create, Observe, Update, Delete, LateInitialize). To orphan resources on deletion, use ["Create", "Observe", "Update", "LateInitialize"].
-                      type: array
-                      items:
-                        type: string
-                        enum:
-                          - "*"
-                          - Create
-                          - Observe
-                          - Update
-                          - Delete
-                          - LateInitialize
-                        default: "*"
+                    description: ManagementPolicies for AWS EC2 resources. Defaults to ["*"] which includes all operations (Create, Observe, Update, Delete, LateInitialize). To orphan resources on deletion, use ["Create", "Observe", "Update", "LateInitialize"].
+                    type: array
+                    items:
+                      type: string
+                      enum:
+                      - "*"
+                      - Create
+                      - Observe
+                      - Update
+                      - Delete
+                      - LateInitialize
+                      default: "*"
                   providerConfigName:
                     description: Crossplane ProviderConfig to use for provisioning this resources
                     type: string
@@ -74,7 +116,7 @@ spec:
                     type: string
                     enum:
                     - "1.35"
-                    - "1.34"                      
+                    - "1.34"
                     - "1.33"
                     - "1.32"
                     - "1.31"
@@ -102,13 +144,13 @@ spec:
             - parameters
             type: object
           status:
-              description: A Status represents the observed state
-              properties:
-                eks:
-                  description: Freeform field containing status information for eks
-                  type: object
-                  x-kubernetes-preserve-unknown-fields: true
-              type: object
+            description: A Status represents the observed state
+            properties:
+              eks:
+                description: Freeform field containing status information for eks
+                type: object
+                x-kubernetes-preserve-unknown-fields: true
+            type: object
         required:
         - spec
         type: object
