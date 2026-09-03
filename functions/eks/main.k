@@ -223,7 +223,22 @@ if ready(get(_ocds, "kubernetesCluster", "")) or exists("kubernetesClusterAuth")
     _items += [
         eksv1beta1.ClusterAuth {
             metadata = _metadata("kubernetesClusterAuth")
+            # managementPolicies is pinned to the default and deliberately
+            # overrides _defaults - do not "tidy" this back to inheriting it.
+            # ClusterAuth's controller in provider-upjet-aws is hand-written
+            # (aws_eks_cluster_auth is a Terraform data source, not a resource,
+            # so it only mints a token) and it never passes
+            # managed.WithManagementPolicies() to managed.NewReconciler. The
+            # option is therefore absent at compile time and no provider flag or
+            # DeploymentRuntimeConfig can turn it on, so any non-default value is
+            # rejected outright with "spec.managementPolicies is set to a
+            # non-default value but the feature is not enabled" and the resource
+            # never syncs - which starves every downstream consumer of the
+            # {id}-ekscluster kubeconfig secret. Pinning it costs nothing: there
+            # is no external AWS state to orphan here, only a connection secret,
+            # and the controller's Delete is a no-op.
             spec: _defaults | {
+                managementPolicies = ["*"]
                 forProvider = {
                     region = params.region
                     clusterNameSelector.matchControllerRef = True
