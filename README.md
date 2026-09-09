@@ -38,6 +38,17 @@ This repository serves as a foundational step. To enhance your configuration, co
 2. editing the existing API definition to your needs
 
 To learn more about how to build APIs for your managed control planes in Upbound, read the guide on [Upbound's docs](https://docs.upbound.io/).
+
+## Adopting an existing cluster
+
+`bootstrapSelfManagedAddons` is create-only and `DescribeCluster` never returns
+it, so an adopted cluster observes `false` against the schema default `true`. In
+`forProvider` that replace-diff never resolves, the cluster stays
+`Synced=False`, and the composition stalls at `kubernetesClusterAuth` - no node
+group, no add-ons, no kubeconfig. It is set through `initProvider`, whose keys
+upjet filters out of the update diff, and must never also appear in
+`forProvider`.
+
 ## Managed Resource Activation Policy
 
 This configuration includes a `ManagedResourceActivationPolicy` (MRAP) that enables only the required CRDs from dependent providers. If you're running Crossplane without a default activation policy, this ensures that only the necessary CRDs are activated, reducing resource overhead and improving control plane performance.
