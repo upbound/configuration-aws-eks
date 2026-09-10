@@ -16,6 +16,11 @@ _kubernetesCluster = eksv1beta1.Cluster {
     }
     spec = {
         managementPolicies = ["*"]
+        # Must stay in initProvider: only init-exclusive keys are filtered out
+        # of upjet's update diff, which is what makes an adopted cluster sync.
+        initProvider = {
+            bootstrapSelfManagedAddons = True
+        }
         forProvider = {
             region = "us-west-2"
             tags = {

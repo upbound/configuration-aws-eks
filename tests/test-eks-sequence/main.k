@@ -179,4 +179,29 @@ _test5 = metav1alpha1.CompositionTest {
     ]
 }
 
-items = [_test1, _test2, _test3, _test4, _test5]
+# An existing add-on must keep being composed before the node group is ready,
+# or adoption drops it and Crossplane creates a duplicate.
+_test6 = metav1alpha1.CompositionTest {
+    metadata.name: "pod-identity-agent-addon-survives-unready-nodegroup"
+    **_spec
+    spec.observedResources: [
+        eksv1beta1.Addon {
+            **resources._eksPodIdentityAgentAddon
+            metadata: {
+                name = "configuration-aws-eks-podidentityagent"
+                namespace = "default"
+            }
+            status: {
+                atProvider: {
+                    id: "test-eks-pod-identity-agent-addon"
+                }
+                conditions: conditions._readyConditions
+            }
+        }
+    ]
+    spec.assertResources: [
+        resources._eksPodIdentityAgentAddon
+    ]
+}
+
+items = [_test1, _test2, _test3, _test4, _test5, _test6]

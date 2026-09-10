@@ -172,6 +172,14 @@ _items += [
     eksv1beta1.Cluster {
         metadata = _named("kubernetesCluster", "{}-eks".format(params.id))
         spec: _defaults | {
+            # Create-only and never read back, so an adopted cluster observes
+            # False against a schema default of True. In forProvider that
+            # replace-diff never resolves and stalls the sequence below at
+            # kubernetesClusterAuth; upjet filters init-exclusive keys out of
+            # the update diff, so keep it here only.
+            initProvider = {
+                bootstrapSelfManagedAddons = True
+            }
             forProvider = {
                 region = params.region
                 tags = _identityTags("kubernetesCluster")
@@ -452,7 +460,7 @@ if (ready(get(_ocds, "ebsCSIDriverPodIdentityAssociation", "")) and ready(get(_o
         }
     ]
 
-if ready(get(_ocds, "nodeGroupPublic", "")) or exists("eks-pod-identity-agent"):
+if ready(get(_ocds, "nodeGroupPublic", "")) or exists("eks-pod-identity-agent-addon"):
     _items += [
         eksv1beta1.Addon {
             metadata = _metadata("eks-pod-identity-agent-addon")
